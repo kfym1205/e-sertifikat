@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+:root {
+  --bnn-primary: #00529B;
+  --bnn-dark: #003566;
+  --bnn-secondary: #1677C8;
+  --bnn-light: #EAF4FC;
+  --bnn-bg: #F5F8FC;
+  --bnn-card: #FFFFFF;
+  --bnn-text: #1F2937;
+  --bnn-muted: #64748B;
+  --bnn-border: #E2E8F0;
+  --bnn-gold: #D4AF37;
+}
+
+body {
+  background-color: var(--bnn-bg);
+  color: var(--bnn-text);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}

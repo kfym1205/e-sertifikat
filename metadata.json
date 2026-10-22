@@ -1,0 +1,6 @@
+{
+  "name": "Sertifikat Otomatis",
+  "description": "Aplikasi manajemen template sertifikat custom, pendaftaran peserta online, penomoran registrasi otomatis, generator PDF presisi, dan pengiriman email otomatis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

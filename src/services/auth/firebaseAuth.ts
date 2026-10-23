@@ -44,59 +44,41 @@ export async function connectGmailAccount(): Promise<GmailConnectionResult> {
   try {
     const result = await signInWithPopup(auth, gmailProvider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
-
-    const accessToken = credential?.accessToken;
+    // CRITICAL: Strictly use Google OAuth 2.0 Access Token (with gmail.send scope),
+    // NEVER use Firebase ID Token (getIdToken is only for Firebase services and cannot call Gmail API).
+    const googleOAuthAccessToken = credential?.accessToken;
     const userEmail = result.user.email || '';
     const displayName = result.user.displayName || 'Administrator BNN';
 
-    if (!accessToken) {
-      throw new Error('Gagal memperoleh OAuth Access Token dari Google. Pastikan izin Gmail disetujui.');
+    if (!googleOAuthAccessToken) {
+      throw new Error('Gagal memperoleh Google OAuth Access Token. Pastikan akun Google dipilih dan izin disetujui.');
     }
 
     // Persist token and email in backend serverless/express endpoint with resilient error handling
-    const apiRes = await safeApiFetch<{ success: boolean; message: string; error?: string }>('/api/email/gmail/connect', {
+    const apiRes = await safeApiFetch<{ success: boolean; message: string; email?: string; displayName?: string; error?: string }>('/api/email/gmail/connect', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${googleOAuthAccessToken}`,
       },
       body: JSON.stringify({
         email: userEmail,
         displayName,
-        accessToken,
+        accessToken: googleOAuthAccessToken,
       }),
     });
 
     if (!apiRes.ok) {
       const serverErrMsg = apiRes.data?.error || apiRes.data?.message || `Server menolak koneksi akun Gmail (${apiRes.status}).`;
-      
-      // If server responded with 404 (e.g. Vercel serverless function not yet deployed),
-      // we still retain the client-side session so the admin can proceed or retry
-      if (apiRes.status === 404) {
-        saveGmailSessionToClient({
-          email: userEmail,
-          displayName,
-          accessToken,
-          connectedAt: new Date().toISOString(),
-          scopeVerified: true,
-          isTestSendPassed: false,
-        });
-
-        return {
-          success: true,
-          email: userEmail,
-          displayName,
-          accessToken,
-        };
-      }
-
       throw new Error(serverErrMsg);
     }
 
     // Successfully verified by backend
+    const verifiedEmail = apiRes.data?.email || userEmail;
+    const verifiedDisplayName = apiRes.data?.displayName || displayName;
     const session: StoredGmailSession = {
-      email: userEmail,
-      displayName,
-      accessToken,
+      email: verifiedEmail,
+      displayName: verifiedDisplayName,
+      accessToken: googleOAuthAccessToken,
       connectedAt: new Date().toISOString(),
       scopeVerified: true,
       isTestSendPassed: false,
@@ -105,9 +87,9 @@ export async function connectGmailAccount(): Promise<GmailConnectionResult> {
 
     return {
       success: true,
-      email: userEmail,
-      displayName,
-      accessToken,
+      email: verifiedEmail,
+      displayName: verifiedDisplayName,
+      accessToken: googleOAuthAccessToken,
     };
   } catch (error: any) {
     console.error('Error connecting Gmail:', error);

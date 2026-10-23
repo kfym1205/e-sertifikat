@@ -14,7 +14,37 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 
-// Body parsers
+// Sanitized diagnostic logger for serverless troubleshooting (never leaks tokens/passwords/secrets)
+function safeLog(stage: string, data?: Record<string, any>) {
+  const sanitized: Record<string, any> = {};
+  if (data) {
+    for (const [key, value] of Object.entries(data)) {
+      if (/token|secret|password|key|auth|cookie|credential/i.test(key)) {
+        sanitized[key] = value ? `[REDACTED_${String(value).length}_CHARS]` : '[NONE]';
+      } else {
+        sanitized[key] = value;
+      }
+    }
+  }
+  console.log(`[BNN-EMAIL-DIAGNOSTIC] [${new Date().toISOString()}] [${stage}]`, JSON.stringify(sanitized));
+}
+
+// Middleware to handle pre-parsed bodies in Vercel Serverless environment (@vercel/node)
+app.use((req: Request, res: Response, next) => {
+  if (typeof req.body === 'string' && req.body.trim()) {
+    try {
+      req.body = JSON.parse(req.body);
+      (req as any)._body = true;
+    } catch {
+      // not JSON string
+    }
+  } else if (req.body !== undefined && typeof req.body === 'object' && req.body !== null) {
+    (req as any)._body = true;
+  }
+  next();
+});
+
+// Body parsers for local dev / standalone server
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
@@ -612,55 +642,90 @@ app.post('/api/email/save-config', (req: Request, res: Response) => {
 // 4. POST /api/email/gmail/connect (Store connected Gmail OAuth credentials in server memory)
 app.post('/api/email/gmail/connect', async (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'application/json');
-  const { email, displayName, accessToken } = req.body;
-  const token = accessToken || (req.headers.authorization?.replace(/^Bearer\s+/i, ''));
 
-  if (!token) {
-    return res.status(400).json({ success: false, error: 'OAuth Access Token Google tidak ditemukan.' });
+  const body = (req.body && typeof req.body === 'object') ? req.body : {};
+  const clientToken = (body.accessToken || (typeof req.headers.authorization === 'string' ? req.headers.authorization.replace(/^Bearer\s+/i, '') : '') || '').trim();
+  const clientEmail = (body.email || '').trim();
+  const clientDisplayName = (body.displayName || '').trim();
+
+  safeLog('GMAIL_CONNECT_RECEIVED', {
+    hasToken: Boolean(clientToken),
+    tokenLength: clientToken.length,
+    clientEmail,
+    clientDisplayName,
+  });
+
+  if (!clientToken) {
+    safeLog('GMAIL_CONNECT_MISSING_TOKEN');
+    return res.status(400).json({ success: false, error: 'OAuth Access Token Google tidak ditemukan pada permintaan.' });
   }
 
   try {
-    // Verify token with Google userinfo / profile
-    const profileRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    safeLog('GMAIL_VERIFYING_TOKEN_INFO');
+    // Verify token using official Google OAuth2 TokenInfo API (does NOT require gmail.readonly permission)
+    const tokenRes = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(clientToken)}`);
 
-    if (!profileRes.ok) {
-      const err = await profileRes.json().catch(() => ({}));
-      let friendlyErrMsg = err.error?.message || `Otorisasi Google gagal (${profileRes.status})`;
-      if (profileRes.status === 403) {
-        friendlyErrMsg = 'Izin Gmail API ditolak oleh Google. Pastikan Gmail API telah diaktifkan pada Google Cloud Console dan scope https://www.googleapis.com/auth/gmail.send telah disetujui.';
-      }
+    if (!tokenRes.ok) {
+      const errData = await tokenRes.json().catch(() => ({}));
+      safeLog('GMAIL_TOKENINFO_REJECTED', {
+        status: tokenRes.status,
+        error: errData.error_description || errData.error || 'Token tidak valid',
+      });
       return res.status(401).json({
         success: false,
-        error: friendlyErrMsg,
+        error: `Otorisasi Google tidak valid (${errData.error_description || 'Token akses Google ditolak'}). Silakan klik "Hubungkan Akun Gmail" kembali.`,
+        code: 'INVALID_GOOGLE_TOKEN',
       });
     }
 
-    const profileData = await profileRes.json();
-    const verifiedEmail = profileData.emailAddress || email;
+    const tokenData = await tokenRes.json();
+    safeLog('GMAIL_TOKENINFO_ACCEPTED', {
+      verifiedEmail: tokenData.email,
+      expiresIn: tokenData.expires_in,
+      scope: tokenData.scope,
+    });
+
+    // Check scope: must include gmail.send or mail.google.com
+    const scopeStr = tokenData.scope || '';
+    const hasSendScope = scopeStr.includes('gmail.send') || scopeStr.includes('mail.google.com');
+
+    if (!hasSendScope) {
+      safeLog('GMAIL_SCOPE_MISSING', { scopes: scopeStr });
+      return res.status(403).json({
+        success: false,
+        error: 'Izin pengiriman Gmail (scope https://www.googleapis.com/auth/gmail.send) tidak diberikan. Silakan hubungkan ulang akun dan beri tanda centang pada persetujuan kirim email.',
+        code: 'MISSING_GMAIL_SEND_SCOPE',
+      });
+    }
+
+    const verifiedEmail = tokenData.email || clientEmail || 'sertifikat.bnnkgorontalo@gmail.com';
+    const effectiveDisplayName = clientDisplayName || emailConfigState.gmailSender.senderName;
 
     emailConfigState.gmail.connected = true;
     emailConfigState.gmail.email = verifiedEmail;
-    emailConfigState.gmail.accessToken = token;
+    emailConfigState.gmail.accessToken = clientToken;
     emailConfigState.gmail.connectedAt = new Date().toISOString();
     emailConfigState.gmail.scopeVerified = true;
     emailConfigState.gmail.lastError = undefined;
 
     // Set genuine Gmail sender identity
     emailConfigState.gmailSender.senderAddress = verifiedEmail;
-    if (displayName) {
-      emailConfigState.gmailSender.senderName = displayName;
-    }
+    emailConfigState.gmailSender.senderName = effectiveDisplayName;
 
-    res.json({
+    safeLog('GMAIL_CONNECTED_SUCCESSFULLY', { verifiedEmail, effectiveDisplayName });
+
+    return res.json({
       success: true,
       message: `Akun Gmail "${verifiedEmail}" berhasil dihubungkan ke e-Sertifikat BNN!`,
       email: verifiedEmail,
-      displayName: emailConfigState.gmailSender.senderName,
+      displayName: effectiveDisplayName,
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: `Gagal memverifikasi akun Gmail: ${err.message}` });
+    safeLog('GMAIL_CONNECT_EXCEPTION', { error: err?.message || String(err) });
+    return res.status(500).json({
+      success: false,
+      error: `Gagal memverifikasi akun Google: ${err?.message || 'Terjadi kesalahan jaringan internal'}`,
+    });
   }
 });
 
@@ -1492,6 +1557,24 @@ app.post('/api/webhook/email', (req: Request, res: Response) => {
   const signature = req.headers['svix-signature'] || req.headers['x-resend-signature'];
   console.log('Received email webhook event:', req.body?.type || 'unknown', 'signature present:', !!signature);
   res.json({ received: true });
+});
+
+// Global Express error handler to guarantee consistent JSON response on unhandled errors (never HTML error page)
+app.use((err: any, req: Request, res: Response, next: any) => {
+  safeLog('EXPRESS_GLOBAL_ERROR', {
+    method: req.method,
+    url: req.url,
+    error: err?.message || String(err),
+    code: err?.code,
+    status: err?.status || 500,
+  });
+
+  const statusCode = typeof err?.status === 'number' && err.status >= 400 && err.status < 600 ? err.status : 500;
+  res.status(statusCode).json({
+    success: false,
+    error: err?.message || 'Terjadi kesalahan pemrosesan pada server backend.',
+    code: err?.code || 'SERVER_ERROR',
+  });
 });
 
 // Catch-all 404 handler for API routes to guarantee JSON response (never HTML)

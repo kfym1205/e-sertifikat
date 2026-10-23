@@ -111,7 +111,17 @@ export async function safeParseResponse<T = any>(response: Response): Promise<Ap
   } else if (status === 504 || status === 502) {
     friendlyMessage = `Koneksi gateway server Vercel timeout (${status}). Silakan ulangi beberapa saat lagi.`;
   } else if (status >= 500) {
-    friendlyMessage = `Server mengalami kendala internal (${status}). Periksa log serverless Vercel.`;
+    let cleanDetail = '';
+    if (rawText) {
+      cleanDetail = rawText
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/at\s+[^\n]+/g, '')
+        .trim();
+    }
+    friendlyMessage = cleanDetail && cleanDetail.length > 3 && cleanDetail.length < 160
+      ? `Kendala internal server backend (${status}): ${cleanDetail}`
+      : `Server mengalami kendala internal (${status}). Periksa log serverless Vercel.`;
   } else if (status === 401 || status === 403) {
     friendlyMessage = `Akses ditolak atau kredensial otorisasi tidak valid (${status}).`;
   }

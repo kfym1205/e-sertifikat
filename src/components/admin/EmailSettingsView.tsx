@@ -66,6 +66,7 @@ export const EmailSettingsView: React.FC = () => {
   const [bnnTestResult, setBnnTestResult] = useState<ConnectionTestResult | null>(null);
 
   const [isConnectingGmail, setIsConnectingGmail] = useState(false);
+  const [gmailConnectError, setGmailConnectError] = useState<string | null>(null);
   const [isTestingGmail, setIsTestingGmail] = useState(false);
   const [gmailTestRecipient, setGmailTestRecipient] = useState('');
   const [gmailTestResult, setGmailTestResult] = useState<ConnectionTestResult | null>(null);
@@ -217,17 +218,23 @@ export const EmailSettingsView: React.FC = () => {
   // 4. Connect Gmail via OAuth Popup
   const handleConnectGmail = async () => {
     setIsConnectingGmail(true);
+    setGmailConnectError(null);
     try {
       const res = await connectGmailAccount();
       if (res.success && res.email) {
         showToast(`Akun Gmail "${res.email}" berhasil dihubungkan! Lakukan uji pengiriman untuk mengaktifkan saluran.`);
         setGmailSenderAddress(res.email);
+        setGmailConnectError(null);
         await loadStatus();
       } else {
-        showToast(res.error || 'Gagal menghubungkan akun Gmail.', 'error');
+        const errorMsg = res.error || 'Gagal menghubungkan akun Gmail.';
+        setGmailConnectError(errorMsg);
+        showToast(errorMsg, 'error');
       }
     } catch (err: any) {
-      showToast(err.message || 'Terjadi kesalahan saat menghubungkan Gmail.', 'error');
+      const msg = err.message || 'Terjadi kesalahan saat menghubungkan Gmail.';
+      setGmailConnectError(msg);
+      showToast(msg, 'error');
     } finally {
       setIsConnectingGmail(false);
     }
@@ -1009,6 +1016,29 @@ Satker BNN Kabupaten Gorontalo`;
                   )}
                 </div>
               </div>
+
+              {/* Detailed Gmail Connection Error Alert */}
+              {gmailConnectError && (
+                <div className="p-3.5 bg-rose-950/60 border border-rose-700/60 rounded-xl text-xs text-rose-200 flex items-start gap-2.5 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <span className="font-bold block text-rose-100 mb-0.5">Kendala Otorisasi Akun Google:</span>
+                    <p className="text-[11px] text-rose-200 leading-relaxed">{gmailConnectError}</p>
+                    {gmailConnectError.includes('Authorized Domains') && (
+                      <div className="mt-2 text-[11px] p-2 bg-slate-900/80 rounded-lg border border-rose-900/40 text-slate-300 font-mono">
+                        Langkah: Firebase Console &gt; Authentication &gt; Settings &gt; Authorized domains &gt; Tambahkan &quot;sertifikat.p2mkabgor.web.id&quot;
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setGmailConnectError(null)}
+                    className="text-rose-400 hover:text-rose-200 text-xs px-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
 
               {/* OAuth Security Guarantees */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-800 text-[11px] text-slate-400">

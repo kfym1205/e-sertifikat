@@ -18,6 +18,23 @@ const isProd = process.env.NODE_ENV === 'production';
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
+// Middleware to normalize URL paths for Vercel Serverless Function compatibility
+app.use((req: Request, res: Response, next) => {
+  if (!req.url.startsWith('/api') && (
+    req.url.startsWith('/email') ||
+    req.url.startsWith('/admin') ||
+    req.url.startsWith('/health') ||
+    req.url.startsWith('/appearance') ||
+    req.url.startsWith('/send-email') ||
+    req.url.startsWith('/webhook')
+  )) {
+    const prefixed = '/api' + req.url;
+    req.url = prefixed;
+    (req as any).originalUrl = prefixed;
+  }
+  next();
+});
+
 // In-Memory Server Email Config State (initialized from environment variables)
 const emailConfigState = {
   deliveryStrategy: (process.env.BNN_DELIVERY_STRATEGY as any) || 'bnn_primary_gmail_fallback',
@@ -404,8 +421,10 @@ async function sendViaGmailApi(params: {
   textBody?: string;
   pdfBase64?: string;
   pdfFilename?: string;
+  accessToken?: string;
 }): Promise<{ success: boolean; messageId: string; error?: string; code?: string }> {
-  if (!emailConfigState.gmail.connected || !emailConfigState.gmail.accessToken) {
+  const activeToken = params.accessToken || emailConfigState.gmail.accessToken;
+  if (!activeToken) {
     return {
       success: false,
       messageId: '',
@@ -428,13 +447,13 @@ async function sendViaGmailApi(params: {
     const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${emailConfigState.gmail.accessToken}`,
+        'Authorization': `Bearer ${activeToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ raw: rawMessage }),
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
       const errMsg = data.error?.message || `Gmail API HTTP ${response.status}`;
@@ -592,11 +611,12 @@ app.post('/api/email/save-config', (req: Request, res: Response) => {
 
 // 4. POST /api/email/gmail/connect (Store connected Gmail OAuth credentials in server memory)
 app.post('/api/email/gmail/connect', async (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/json');
   const { email, displayName, accessToken } = req.body;
   const token = accessToken || (req.headers.authorization?.replace(/^Bearer\s+/i, ''));
 
   if (!token) {
-    return res.status(400).json({ error: 'OAuth Access Token Google tidak ditemukan.' });
+    return res.status(400).json({ success: false, error: 'OAuth Access Token Google tidak ditemukan.' });
   }
 
   try {
@@ -607,8 +627,13 @@ app.post('/api/email/gmail/connect', async (req: Request, res: Response) => {
 
     if (!profileRes.ok) {
       const err = await profileRes.json().catch(() => ({}));
+      let friendlyErrMsg = err.error?.message || `Otorisasi Google gagal (${profileRes.status})`;
+      if (profileRes.status === 403) {
+        friendlyErrMsg = 'Izin Gmail API ditolak oleh Google. Pastikan Gmail API telah diaktifkan pada Google Cloud Console dan scope https://www.googleapis.com/auth/gmail.send telah disetujui.';
+      }
       return res.status(401).json({
-        error: `Otorisasi Google gagal (${profileRes.status}): ${err.error?.message || 'Token tidak valid'}`,
+        success: false,
+        error: friendlyErrMsg,
       });
     }
 
@@ -632,9 +657,10 @@ app.post('/api/email/gmail/connect', async (req: Request, res: Response) => {
       success: true,
       message: `Akun Gmail "${verifiedEmail}" berhasil dihubungkan ke e-Sertifikat BNN!`,
       email: verifiedEmail,
+      displayName: emailConfigState.gmailSender.senderName,
     });
   } catch (err: any) {
-    res.status(500).json({ error: `Gagal memverifikasi akun Gmail: ${err.message}` });
+    res.status(500).json({ success: false, error: `Gagal memverifikasi akun Gmail: ${err.message}` });
   }
 });
 
@@ -661,10 +687,15 @@ app.post('/api/email/gmail/disconnect', (req: Request, res: Response) => {
 
 // 6. POST /api/email/gmail/test-send (Strict Requirement: Test send must succeed before Gmail alternative is activated!)
 app.post('/api/email/gmail/test-send', async (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/json');
   const startTime = Date.now();
-  const targetEmail = req.body?.to || emailConfigState.gmail.email;
+  const clientToken = req.body?.accessToken || req.headers.authorization?.replace(/^Bearer\s+/i, '');
+  const activeToken = clientToken || emailConfigState.gmail.accessToken;
+  const connectedEmail = req.body?.gmailEmail || emailConfigState.gmail.email;
+  const senderDisplayName = req.body?.senderName || emailConfigState.gmailSender.senderName;
+  const targetEmail = req.body?.to || connectedEmail || emailConfigState.gmail.email;
 
-  if (!emailConfigState.gmail.connected || !emailConfigState.gmail.accessToken) {
+  if (!activeToken) {
     return res.status(400).json({
       success: false,
       providerType: 'gmail_api',
@@ -672,7 +703,19 @@ app.post('/api/email/gmail/test-send', async (req: Request, res: Response) => {
     });
   }
 
-  const senderHeader = `"${emailConfigState.gmailSender.senderName}" <${emailConfigState.gmail.email}>`;
+  // Update in-memory state if token and email provided from client
+  if (connectedEmail) {
+    emailConfigState.gmail.email = connectedEmail;
+    emailConfigState.gmail.connected = true;
+    emailConfigState.gmailSender.senderAddress = connectedEmail;
+  }
+  if (activeToken) {
+    emailConfigState.gmail.accessToken = activeToken;
+    emailConfigState.gmail.connected = true;
+  }
+
+  const senderEmail = connectedEmail || 'sertifikat.bnnkgorontalo@gmail.com';
+  const senderHeader = `"${senderDisplayName}" <${senderEmail}>`;
   const testHtml = `
     <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f8fafc; color: #1e293b;">
       <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;">
@@ -684,8 +727,8 @@ app.post('/api/email/gmail/test-send', async (req: Request, res: Response) => {
           <p>Yth. Administrator e-Sertifikat BNN,</p>
           <p>Pesan ini adalah <strong>Uji Coba Pengiriman Otomatis</strong> melalui <strong>Gmail API (OAuth 2.0)</strong>.</p>
           <div style="background: #eaf4fc; border-left: 4px solid #1677C8; padding: 12px; margin: 16px 0; border-radius: 4px;">
-            <div><strong>Akun Gmail Pengirim:</strong> ${emailConfigState.gmail.email}</div>
-            <div><strong>Nama Pengirim:</strong> ${emailConfigState.gmailSender.senderName}</div>
+            <div><strong>Akun Gmail Pengirim:</strong> ${senderEmail}</div>
+            <div><strong>Nama Pengirim:</strong> ${senderDisplayName}</div>
             <div><strong>Waktu Pengujian:</strong> ${new Date().toLocaleString('id-ID')} WITA</div>
             <div><strong>Status Otorisasi:</strong> Scope gmail.send Terverifikasi</div>
           </div>
@@ -700,7 +743,8 @@ app.post('/api/email/gmail/test-send', async (req: Request, res: Response) => {
     to: targetEmail,
     subject: '[UJI COBA] Jalur Pengiriman Gmail Alternatif - e-Sertifikat BNN',
     htmlBody: testHtml,
-    textBody: `Uji coba pengiriman Gmail API resmi e-Sertifikat BNN dari ${emailConfigState.gmail.email}`,
+    textBody: `Uji coba pengiriman Gmail API resmi e-Sertifikat BNN dari ${senderEmail}`,
+    accessToken: activeToken,
   });
 
   const latencyMs = Date.now() - startTime;
@@ -1243,8 +1287,14 @@ app.post('/api/email/send', async (req: Request, res: Response) => {
       ? `Email Resmi BNN gagal (${primaryError || 'Koneksi tidak tersedia'}). Pengiriman dialihkan ke akun Gmail alternatif.`
       : undefined;
 
+    const incomingGmailToken = req.body?.gmailAccessToken || req.headers.authorization?.replace(/^Bearer\s+/i, '');
+    const activeGmailToken = incomingGmailToken || emailConfigState.gmail.accessToken;
+    const activeGmailEmail = req.body?.gmailEmail || emailConfigState.gmail.email;
+    const activeGmailSender = req.body?.gmailSenderName || emailConfigState.gmailSender.senderName;
+    const hasActiveToken = Boolean(activeGmailToken && (activeGmailEmail || emailConfigState.gmail.connected));
+
     // Check if Gmail Alternative is connected & verified
-    if (!emailConfigState.gmail.connected || !emailConfigState.gmail.accessToken) {
+    if (!hasActiveToken) {
       const actionReqLog = {
         id: `elog_${Date.now()}`,
         issuanceId: issuanceId || `iss_${Date.now()}`,
@@ -1272,35 +1322,10 @@ app.post('/api/email/send', async (req: Request, res: Response) => {
       });
     }
 
-    if (!emailConfigState.gmail.isTestSendPassed) {
-      const actionReqLog = {
-        id: `elog_${Date.now()}`,
-        issuanceId: issuanceId || `iss_${Date.now()}`,
-        recipientEmail: to,
-        recipientName: recipientName || '',
-        subject,
-        status: 'action_required',
-        deliveryStrategy: strategy,
-        usedMethod: 'gmail_api',
-        senderAddress: emailConfigState.gmail.email,
-        attemptCount: 1,
-        lastAttemptAt: new Date().toISOString(),
-        errorMessage: 'Akun Gmail terhubung tetapi belum lulus uji coba pengiriman (Test Send Required).',
-        createdAt: new Date().toISOString(),
-      };
-      emailConfigState.deliveryLogs.unshift(actionReqLog);
-
-      return res.status(200).json({
-        success: false,
-        status: 'action_required',
-        providerType: 'gmail_api',
-        error: 'Akun Gmail belum diaktifkan karena belum dilakukan uji pengiriman percobaan.',
-      });
-    }
-
     // Execute Gmail API dispatch with authentic Gmail sender identity
-    const gmailSenderHeader = `"${emailConfigState.gmailSender.senderName}" <${emailConfigState.gmail.email}>`;
-    usedSender = emailConfigState.gmail.email;
+    const senderEmail = activeGmailEmail || emailConfigState.gmail.email || 'sertifikat.bnnkgorontalo@gmail.com';
+    const gmailSenderHeader = `"${activeGmailSender}" <${senderEmail}>`;
+    usedSender = senderEmail;
 
     const emailHtml = createOfficialEmailHtml({
       recipientName: recipientName || '',
@@ -1321,6 +1346,7 @@ app.post('/api/email/send', async (req: Request, res: Response) => {
       textBody,
       pdfBase64,
       pdfFilename,
+      accessToken: activeGmailToken,
     });
 
     if (gmailResult.success) {
@@ -1468,6 +1494,14 @@ app.post('/api/webhook/email', (req: Request, res: Response) => {
   res.json({ received: true });
 });
 
+// Catch-all 404 handler for API routes to guarantee JSON response (never HTML)
+app.all('/api/*', (req: Request, res: Response) => {
+  res.status(404).json({
+    success: false,
+    error: `Endpoint API "${req.method} ${req.originalUrl || req.url}" tidak ditemukan di server.`,
+  });
+});
+
 async function startServer() {
   if (!isProd) {
     // Mount Vite dev middlewares
@@ -1491,6 +1525,12 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error('Failed to start server:', err);
-});
+// In Vercel Serverless environment, do not start local listening port or import Vite dev server
+if (process.env.VERCEL !== '1' && !process.env.VERCEL_ENV && process.env.NODE_ENV !== 'test') {
+  startServer().catch((err) => {
+    console.error('Failed to start server:', err);
+  });
+}
+
+export default app;
+

@@ -58,6 +58,7 @@ export interface ConnectionTestResult {
   success: boolean;
   providerType: EmailProviderType;
   message: string;
+  error?: string;
   latencyMs?: number;
   details?: {
     host?: string;

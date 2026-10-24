@@ -1,9 +1,9 @@
 import type { Request, Response } from 'express';
-import app from '../server';
+import app from '../src/serverApp';
 
 /**
  * Vercel Serverless Function entrypoint
- * Hands incoming requests directly to the configured Express application
+ * Hands incoming requests directly to the pure Express application (without listening port or Vite dev server)
  */
 export default function handler(req: Request, res: Response) {
   // Pre-flag _body if already parsed by @vercel/node runtime to prevent stream read errors

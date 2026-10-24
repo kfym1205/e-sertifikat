@@ -294,25 +294,13 @@ export const EmailDeliveryView: React.FC = () => {
                     {/* Method & Sender identity */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        {log.usedMethod === 'gmail_api' ? (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                            <Globe className="w-3 h-3" />
-                            Gmail API
-                          </span>
-                        ) : log.usedMethod === 'bnn_relay_api' ? (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1">
-                            <Zap className="w-3 h-3" />
-                            BNN Relay
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1">
-                            <Server className="w-3 h-3" />
-                            BNN SMTP
-                          </span>
-                        )}
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                          <Globe className="w-3 h-3" />
+                          {log.usedMethod === 'simulation' ? 'Simulasi' : 'Gmail API'}
+                        </span>
                       </div>
                       <div className="text-[10px] text-slate-400 font-mono truncate max-w-[150px]">
-                        {log.senderAddress || 'mail.bnn.go.id'}
+                        {log.senderAddress || 'Gmail API'}
                       </div>
                     </td>
 

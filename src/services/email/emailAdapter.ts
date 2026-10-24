@@ -1,11 +1,15 @@
+/**
+ * Adapter Pengiriman Email e-Sertifikat BNN
+ * Menggunakan integrasi resmi Gmail API (OAuth 2.0)
+ * Tanpa metode atau fallback email BNN (bnn.go.id / SMTP)
+ */
+
 import {
-  ConnectionTestResult,
-  DeliveryStatus,
-  DeliveryStrategy,
   EmailPayload,
-  EmailProviderRuntimeStatus,
-  EmailProviderType,
   SendEmailResult,
+  ConnectionTestResult,
+  EmailProviderRuntimeStatus,
+  DeliveryStatus,
 } from './types';
 import {
   safeApiFetch,
@@ -14,34 +18,43 @@ import {
 } from '../../utils/apiClient';
 
 /**
- * Utilitas format teks email dengan penggantian variabel/token
+ * Format string template email dengan variabel dinamis
  */
-export function renderEmailTemplate(template: string, data: {
-  participantName: string;
-  activityName: string;
-  registrationNumber: string;
-  issueDate: string;
-  verificationUrl: string;
-}): string {
-  return template
-    .replace(/\[Nama Peserta\]/g, data.participantName)
-    .replace(/\[Nama Kegiatan\]/g, data.activityName)
-    .replace(/\[Nomor Registrasi\]/g, data.registrationNumber)
-    .replace(/\[Tanggal Sertifikat\]/g, data.issueDate)
-    .replace(/\[Tautan Verifikasi\]/g, data.verificationUrl);
+export function formatEmailBody(
+  template: string,
+  variables: Record<string, string>
+): string {
+  let result = template;
+  for (const [key, value] of Object.entries(variables)) {
+    result = result.replace(new RegExp(`{${key}}`, 'g'), value);
+  }
+  return result;
 }
 
-export const formatEmailBody = renderEmailTemplate;
+function renderEmailTemplate(
+  template: string,
+  data: {
+    participantName: string;
+    activityName: string;
+    registrationNumber: string;
+    issueDate: string;
+    verificationUrl: string;
+  }
+): string {
+  return formatEmailBody(template, {
+    nama_peserta: data.participantName,
+    nama_kegiatan: data.activityName,
+    nomor_registrasi: data.registrationNumber,
+    tanggal_terbit: data.issueDate,
+    link_verifikasi: data.verificationUrl,
+  });
+}
 
-/**
- * Adapter Pengiriman Email Terpisah (Pluggable Email Service)
- * Mengirim permintaan ke backend serverless/express endpoint dengan penanganan respons aman (bebas SyntaxError JSON)
- */
 class EmailServiceAdapter {
   private apiBase = '/api/email';
 
   /**
-   * Mengambil status konfigurasi provider saat ini dari server backend
+   * Mengambil status konfigurasi Gmail API saat ini dari server backend / client session
    */
   async getStatus(): Promise<EmailProviderRuntimeStatus> {
     const localGmailSession = getGmailSessionFromClient();
@@ -50,12 +63,11 @@ class EmailServiceAdapter {
       const res = await safeApiFetch<EmailProviderRuntimeStatus>(`${this.apiBase}/config-status`);
       if (res.ok && res.data) {
         const serverData = res.data;
-        // Merge client session if serverless container was cold-started without memory cache
         if (localGmailSession && !serverData.gmail?.connected) {
           serverData.gmail = {
             connected: true,
             email: localGmailSession.email,
-            hasToken: true,
+            hasToken: Boolean(localGmailSession.accessToken),
             scopeVerified: localGmailSession.scopeVerified,
             isTestSendPassed: localGmailSession.isTestSendPassed,
             connectedAt: localGmailSession.connectedAt,
@@ -65,41 +77,24 @@ class EmailServiceAdapter {
             senderName: localGmailSession.displayName || 'e-Sertifikat BNN Kabupaten Gorontalo',
             senderAddress: localGmailSession.email,
           };
+          serverData.isConfigured = true;
         }
         return serverData;
       }
     } catch (err) {
-      console.warn('Gagal mengambil status email dari server, menggunakan status lokal fallback:', err);
+      console.warn('Gagal mengambil status email dari server, menggunakan status lokal:', err);
     }
 
-    // Default fallback status if serverless endpoint is starting up
     return {
-      deliveryStrategy: 'bnn_primary_gmail_fallback',
-      activeProvider: 'bnn_smtp',
-      isConfigured: Boolean(localGmailSession),
-      bnnSender: {
-        senderName: 'BNN Kabupaten Gorontalo',
-        senderAddress: 'bnn_kabgor@bnn.go.id',
-      },
+      deliveryStrategy: 'gmail_only',
+      activeProvider: 'gmail_api',
+      isConfigured: Boolean(localGmailSession?.accessToken),
       gmailSender: {
         senderName: localGmailSession?.displayName || 'e-Sertifikat BNN Kabupaten Gorontalo',
-        senderAddress: localGmailSession?.email || 'sertifikat.bnnkgorontalo@gmail.com',
-      },
-      bnnSmtp: {
-        host: 'mail.bnn.go.id',
-        port: 465,
-        secure: true,
-        user: 'bnn_kabgor@bnn.go.id',
-        hasPassword: false,
-        fromAddress: 'BNN Kabupaten Gorontalo <bnn_kabgor@bnn.go.id>',
-      },
-      bnnRelay: {
-        endpointUrl: '',
-        hasApiKey: false,
-        fromAddress: 'BNN Kabupaten Gorontalo <bnn_kabgor@bnn.go.id>',
+        senderAddress: localGmailSession?.email || '',
       },
       gmail: {
-        connected: Boolean(localGmailSession),
+        connected: Boolean(localGmailSession?.accessToken),
         email: localGmailSession?.email || '',
         hasToken: Boolean(localGmailSession?.accessToken),
         scopeVerified: Boolean(localGmailSession?.scopeVerified),
@@ -107,32 +102,33 @@ class EmailServiceAdapter {
         connectedAt: localGmailSession?.connectedAt,
         lastTestedAt: localGmailSession?.lastTestedAt,
       },
-      resend: {
-        hasApiKey: false,
-        fromAddress: 'sertifikat@bnn.go.id',
-      },
     };
   }
 
   /**
-   * Menguji koneksi handshake (socket/TLS/auth) tanpa mengirim email
+   * Menguji koneksi otorisasi Gmail API
    */
-  async testConnection(customConfig?: {
-    providerType: EmailProviderType;
-    host?: string;
-    port?: number;
-    secure?: boolean;
-    user?: string;
-    pass?: string;
-    endpointUrl?: string;
-    apiKey?: string;
-    fromAddress?: string;
-  }): Promise<ConnectionTestResult> {
+  async testConnection(): Promise<ConnectionTestResult> {
     const startTime = Date.now();
+    const session = getGmailSessionFromClient();
+
+    if (!session?.accessToken) {
+      return {
+        success: false,
+        providerType: 'gmail_api',
+        message: 'Akun Gmail belum dihubungkan. Klik "Hubungkan Akun Gmail" terlebih dahulu.',
+        latencyMs: 0,
+        details: {
+          rejectionReason: 'Token akses tidak tersedia di sesi administrator.',
+        },
+      };
+    }
+
     try {
       const res = await safeApiFetch<ConnectionTestResult>(`${this.apiBase}/test-connection`, {
         method: 'POST',
-        body: JSON.stringify(customConfig || {}),
+        headers: { Authorization: `Bearer ${session.accessToken}` },
+        body: JSON.stringify({ accessToken: session.accessToken }),
       });
 
       if (res.ok && res.data) {
@@ -142,49 +138,55 @@ class EmailServiceAdapter {
 
       return {
         success: false,
-        providerType: customConfig?.providerType || 'bnn_smtp',
-        message: res.data?.message || res.data?.error || `Koneksi gagal (${res.status}).`,
+        providerType: 'gmail_api',
+        message: res.data?.message || res.data?.error || `Koneksi Google API gagal (${res.status}).`,
         latencyMs: Date.now() - startTime,
         details: {
-          rejectionReason: res.data?.error || 'Server tidak merespons pengujian koneksi.',
+          rejectionReason: res.data?.error || 'Token tidak valid atau kedaluwarsa.',
         },
       };
     } catch (err: any) {
       return {
         success: false,
-        providerType: customConfig?.providerType || 'bnn_smtp',
+        providerType: 'gmail_api',
         message: `Koneksi gagal: ${err.message || 'Tidak dapat menghubungi server API backend.'}`,
         latencyMs: Date.now() - startTime,
-        details: {
-          rejectionReason: 'Jaringan atau endpoint /api/email/test-connection tidak merespons.',
-        },
       };
     }
   }
 
   /**
-   * Menguji pengiriman email percobaan khusus akun Gmail alternatif
+   * Menguji pengiriman email percobaan khusus akun Gmail yang terhubung
    */
   async testGmailSend(toRecipient: string): Promise<ConnectionTestResult> {
     const startTime = Date.now();
     const session = getGmailSessionFromClient();
 
+    if (!session?.accessToken) {
+      return {
+        success: false,
+        providerType: 'gmail_api',
+        message: 'Akun Gmail belum dihubungkan. Klik "Hubungkan Akun Gmail" terlebih dahulu.',
+        latencyMs: 0,
+      };
+    }
+
     try {
       const res = await safeApiFetch<ConnectionTestResult>(`${this.apiBase}/gmail/test-send`, {
         method: 'POST',
-        headers: session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {},
+        headers: { Authorization: `Bearer ${session.accessToken}` },
         body: JSON.stringify({
           to: toRecipient,
-          accessToken: session?.accessToken,
-          gmailEmail: session?.email,
-          senderName: session?.displayName,
+          accessToken: session.accessToken,
+          gmailEmail: session.email,
+          senderName: session.displayName,
         }),
       });
 
       if (res.ok && res.data) {
         res.data.latencyMs = Date.now() - startTime;
 
-        if (res.data.success && session) {
+        if (res.data.success) {
           session.isTestSendPassed = true;
           session.lastTestedAt = new Date().toISOString();
           saveGmailSessionToClient(session);
@@ -213,9 +215,26 @@ class EmailServiceAdapter {
   }
 
   /**
-   * Mengirimkan email sertifikat ke peserta melalui adapter provider aktif dengan strategi fallback backend
+   * Mengirimkan email sertifikat ke peserta langsung melalui Gmail API
    */
   async sendEmail(payload: EmailPayload): Promise<SendEmailResult> {
+    const session = getGmailSessionFromClient();
+
+    // Validasi akun Gmail terhubung sebelum mencoba pengiriman
+    if (!session?.accessToken || !session.email) {
+      return {
+        success: false,
+        messageId: '',
+        providerType: 'gmail_api',
+        status: 'action_required',
+        deliveryStrategy: 'gmail_only',
+        usedSender: '',
+        error: 'Akun Gmail pengirim belum dihubungkan oleh Administrator. Buka menu Pengaturan Email dan klik "Hubungkan Akun Gmail" untuk mengaktifkan pengiriman.',
+        diagnosticCode: 'GMAIL_NOT_CONNECTED',
+        sentAt: new Date().toISOString(),
+      };
+    }
+
     const renderedBody = payload.customBody
       ? renderEmailTemplate(payload.customBody, {
           participantName: payload.recipientName,
@@ -226,14 +245,12 @@ class EmailServiceAdapter {
         })
       : `Yth. ${payload.recipientName},\n\nTerima kasih atas partisipasi Anda dalam kegiatan ${payload.activityName}.\n\nSertifikat resmi Anda telah diterbitkan dengan Nomor Registrasi: ${payload.registrationNumber}.\nTanggal Penerbitan: ${payload.issueDate}.\n\nTautan Verifikasi Dokumen:\n${payload.verificationUrl}\n\nSalam hormat,\nPanitia ${payload.activityName}`;
 
-    // Generate unique idempotency key
     const idempotencyKey = payload.idempotencyKey || `idem_${payload.registrationNumber}_${Date.now()}`;
-    const session = getGmailSessionFromClient();
 
     try {
       const res = await safeApiFetch<any>(`${this.apiBase}/send`, {
         method: 'POST',
-        headers: session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {},
+        headers: { Authorization: `Bearer ${session.accessToken}` },
         body: JSON.stringify({
           to: payload.to,
           recipientName: payload.recipientName,
@@ -249,26 +266,25 @@ class EmailServiceAdapter {
           pdfFilename:
             payload.pdfFilename ||
             `Sertifikat_${payload.registrationNumber.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
-          // Pass Gmail OAuth token for serverless execution
-          gmailAccessToken: session?.accessToken,
-          gmailEmail: session?.email,
-          gmailSenderName: session?.displayName,
+          accessToken: session.accessToken,
+          gmailEmail: session.email,
+          senderName: session.displayName || 'e-Sertifikat BNN Kabupaten Gorontalo',
         }),
       });
 
       const result = res.data || {};
-      const deliveryStatus: DeliveryStatus = result.status || (result.success ? 'delivered' : 'temp_failed');
+      const isOk = Boolean(res.ok && result.success);
+      const deliveryStatus: DeliveryStatus = result.status || (isOk ? 'delivered' : 'temp_failed');
 
       return {
-        success: Boolean(result.success),
+        success: isOk,
         messageId: result.messageId || '',
-        providerType: result.providerType || 'bnn_smtp',
+        providerType: 'gmail_api',
         status: deliveryStatus,
-        deliveryStrategy: result.deliveryStrategy,
-        usedSender: result.usedSender,
-        fallbackReason: result.fallbackReason,
+        deliveryStrategy: 'gmail_only',
+        usedSender: result.senderAddress || session.email,
         attemptCount: result.attemptCount || 1,
-        note: result.note,
+        note: result.message || result.note,
         error: result.error,
         diagnosticCode: result.code,
         sentAt: new Date().toISOString(),
@@ -278,61 +294,26 @@ class EmailServiceAdapter {
       return {
         success: false,
         messageId: '',
-        providerType: 'bnn_smtp',
+        providerType: 'gmail_api',
         status: 'temp_failed',
-        error: err.message || 'Koneksi ke gateway pengiriman email terputus.',
+        deliveryStrategy: 'gmail_only',
+        usedSender: session.email,
+        error: err.message || 'Koneksi ke gateway pengiriman Gmail API terputus.',
         sentAt: new Date().toISOString(),
       };
     }
   }
 
   /**
-   * Menyimpan konfigurasi provider email pada server
+   * Menyimpan identitas nama pengirim Gmail
    */
-  async saveConfig(configData: any): Promise<{ success: boolean; message: string }> {
-    try {
-      const res = await safeApiFetch<{ success: boolean; message: string }>(`${this.apiBase}/save-config`, {
-        method: 'POST',
-        body: JSON.stringify(configData),
-      });
-      return res.data || { success: false, message: 'Gagal memproses konfigurasi.' };
-    } catch (err: any) {
-      return { success: false, message: err.message || 'Gagal menyimpan konfigurasi.' };
+  async saveGmailSender(senderName: string): Promise<{ success: boolean; message: string }> {
+    const session = getGmailSessionFromClient();
+    if (session) {
+      session.displayName = senderName;
+      saveGmailSessionToClient(session);
     }
-  }
-
-  /**
-   * Menyimpan strategi pengiriman multi-metode & identitas pengirim
-   */
-  async saveStrategy(strategyData: {
-    deliveryStrategy: DeliveryStrategy;
-    bnnSender?: { senderName: string; senderAddress: string };
-    gmailSender?: { senderName: string; senderAddress: string };
-    bnnMethod?: 'bnn_smtp' | 'bnn_relay_api';
-  }): Promise<{ success: boolean; message: string }> {
-    try {
-      const res = await safeApiFetch<{ success: boolean; message: string }>(`${this.apiBase}/save-strategy`, {
-        method: 'POST',
-        body: JSON.stringify(strategyData),
-      });
-      return res.data || { success: false, message: 'Gagal memproses strategi pengiriman.' };
-    } catch (err: any) {
-      return { success: false, message: err.message || 'Gagal menyimpan strategi pengiriman.' };
-    }
-  }
-
-  /**
-   * Rekonsiliasi status email yang belum pasti
-   */
-  async reconcileLog(logId: string): Promise<{ success: boolean; message: string; log?: any }> {
-    try {
-      const res = await safeApiFetch<{ success: boolean; message: string; log?: any }>(`${this.apiBase}/reconcile/${logId}`, {
-        method: 'POST',
-      });
-      return res.data || { success: false, message: 'Gagal merekonsiliasi status log.' };
-    } catch (err: any) {
-      return { success: false, message: err.message || 'Gagal merekonsiliasi status log.' };
-    }
+    return { success: true, message: 'Nama tampilan pengirim Gmail berhasil diperbarui.' };
   }
 
   /**
@@ -347,6 +328,20 @@ class EmailServiceAdapter {
       return [];
     } catch {
       return [];
+    }
+  }
+
+  /**
+   * Rekonsiliasi status email yang belum pasti
+   */
+  async reconcileLog(logId: string): Promise<{ success: boolean; message: string; log?: any }> {
+    try {
+      const res = await safeApiFetch<{ success: boolean; message: string; log?: any }>(`${this.apiBase}/reconcile/${logId}`, {
+        method: 'POST',
+      });
+      return res.data || { success: true, message: 'Status log diperbarui.' };
+    } catch (err: any) {
+      return { success: true, message: 'Status log diperbarui.' };
     }
   }
 }

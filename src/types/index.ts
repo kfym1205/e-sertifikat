@@ -136,7 +136,7 @@ export interface CertificateIssuance {
   reissueReason?: string;
 }
 
-export type DeliveryStrategy = 'bnn_primary_gmail_fallback' | 'bnn_only' | 'gmail_only';
+export type DeliveryStrategy = 'gmail_only';
 
 export type DeliveryStatus =
   | 'pending'
@@ -144,7 +144,7 @@ export type DeliveryStatus =
   | 'delivered'
   | 'temp_failed'
   | 'perm_failed'
-  | 'fallen_back_gmail'
+  | 'fallen_back_gmail' // backward compatibility for legacy logs
   | 'awaiting_confirmation'
   | 'action_required'
   | 'failed'; // backward compatibility
@@ -157,7 +157,7 @@ export interface EmailDeliveryLog {
   subject: string;
   status: DeliveryStatus;
   deliveryStrategy?: DeliveryStrategy;
-  usedMethod?: 'bnn_smtp' | 'bnn_relay_api' | 'gmail_api' | 'resend' | 'simulation';
+  usedMethod?: 'gmail_api' | 'simulation';
   senderAddress?: string;
   attemptCount: number;
   lastAttemptAt: string;

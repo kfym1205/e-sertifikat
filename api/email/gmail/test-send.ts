@@ -60,10 +60,24 @@ export default async function handler(req: Request, res: Response) {
   const startTime = Date.now();
 
   try {
-    const body = (req.body && typeof req.body === 'object') ? req.body : {};
+    let body: any = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        body = {};
+      }
+    } else if (!body || typeof body !== 'object') {
+      body = {};
+    }
+
+    const authHeader = (Array.isArray(req.headers.authorization)
+      ? req.headers.authorization[0]
+      : req.headers.authorization) || '';
+
     const clientToken = (
       body.accessToken ||
-      (typeof req.headers.authorization === 'string' ? req.headers.authorization.replace(/^Bearer\s+/i, '') : '') ||
+      authHeader.replace(/^Bearer\s+/i, '') ||
       ''
     ).trim();
 

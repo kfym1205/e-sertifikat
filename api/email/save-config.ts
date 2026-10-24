@@ -10,10 +10,9 @@ export default async function handler(req: Request, res: Response) {
     return res.status(200).end();
   }
 
-  const body = (req.body && typeof req.body === 'object') ? req.body : {};
   return res.status(200).json({
     success: true,
-    message: 'Konfigurasi provider email server berhasil diperbarui.',
-    providerType: body.providerType || 'bnn_smtp',
+    message: 'Konfigurasi provider Gmail API tersimpan.',
+    providerType: 'gmail_api',
   });
 }

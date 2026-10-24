@@ -1,6 +1,9 @@
 import type { Request, Response } from 'express';
-import nodemailer from 'nodemailer';
 
+/**
+ * Dedicated Vercel Serverless Function: Test Gmail API Connection
+ * Validates Google OAuth token without sending email
+ */
 export default async function handler(req: Request, res: Response) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -12,74 +15,69 @@ export default async function handler(req: Request, res: Response) {
   }
 
   const startTime = Date.now();
-  const body = (req.body && typeof req.body === 'object') ? req.body : {};
-  const provider = body.providerType || 'bnn_smtp';
-
-  const host = body.host || process.env.BNN_SMTP_HOST || 'mail.bnn.go.id';
-  const port = parseInt(body.port || process.env.BNN_SMTP_PORT || '465', 10);
-  const secure = body.secure !== undefined ? Boolean(body.secure) : (port === 465 || process.env.BNN_SMTP_SECURE === 'true');
-  const user = body.user || process.env.BNN_SMTP_USER || 'bnn_kabgor@bnn.go.id';
-  const pass = body.pass || process.env.BNN_SMTP_PASS || '';
-
-  if (provider === 'bnn_smtp') {
-    if (!host || !user) {
-      return res.status(200).json({
-        success: false,
-        providerType: 'bnn_smtp',
-        message: 'Host SMTP dan akun email satker wajib diisi.',
-      });
-    }
-
-    if (!pass) {
-      return res.status(200).json({
-        success: false,
-        providerType: 'bnn_smtp',
-        message: 'Kata sandi akun email satker belum dikonfigurasi.',
-      });
-    }
-
+  let body: any = req.body;
+  if (typeof body === 'string') {
     try {
-      const transporter = nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: { user, pass },
-        connectionTimeout: 5000,
-        greetingTimeout: 5000,
-        socketTimeout: 5000,
-        tls: { rejectUnauthorized: false },
-      });
-
-      await transporter.verify();
-      const latencyMs = Date.now() - startTime;
-
-      return res.status(200).json({
-        success: true,
-        providerType: 'bnn_smtp',
-        message: `Koneksi SMTP ke ${host}:${port} BERHASIL (Handshake TLS Valid, Latensi: ${latencyMs}ms).`,
-        latencyMs,
-      });
-    } catch (err: any) {
-      const latencyMs = Date.now() - startTime;
-      let humanMsg = `Koneksi SMTP ke ${host}:${port} gagal: ${err.message}`;
-      if (err.code === 'ECONNREFUSED') {
-        humanMsg = `Koneksi ditolak (ECONNREFUSED) pada ${host}:${port}. Port SMTP mungkin ditutup.`;
-      } else if (err.code === 'ETIMEDOUT') {
-        humanMsg = `Waktu koneksi habis (ETIMEDOUT) ke ${host}:${port}. Jaringan memblokir port SMTP. Disarankan menggunakan Fallback Gmail.`;
-      }
-
-      return res.status(200).json({
-        success: false,
-        providerType: 'bnn_smtp',
-        message: humanMsg,
-        latencyMs,
-      });
+      body = JSON.parse(body);
+    } catch {
+      body = {};
     }
+  } else if (!body || typeof body !== 'object') {
+    body = {};
   }
 
-  return res.status(200).json({
-    success: true,
-    providerType: provider,
-    message: 'Pengujian koneksi siap digunakan.',
-  });
+  const authHeader = (Array.isArray(req.headers.authorization)
+    ? req.headers.authorization[0]
+    : req.headers.authorization) || '';
+
+  const clientToken = (
+    body.accessToken ||
+    authHeader.replace(/^Bearer\s+/i, '') ||
+    ''
+  ).trim();
+
+  if (!clientToken) {
+    return res.status(200).json({
+      success: false,
+      providerType: 'gmail_api',
+      message: 'Akun Gmail belum dihubungkan. Silakan hubungkan akun Gmail terlebih dahulu.',
+      latencyMs: 0,
+    });
+  }
+
+  try {
+    const tokenRes = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(clientToken)}`);
+    const latencyMs = Date.now() - startTime;
+
+    if (!tokenRes.ok) {
+      const errData = await tokenRes.json().catch(() => ({}));
+      return res.status(200).json({
+        success: false,
+        providerType: 'gmail_api',
+        message: `Token Google tidak valid (${errData.error_description || 'Kedaluwarsa'}). Hubungkan ulang akun Gmail.`,
+        latencyMs,
+      });
+    }
+
+    const tokenData = await tokenRes.json();
+    const hasSendScope = (tokenData.scope || '').includes('gmail.send');
+
+    return res.status(200).json({
+      success: true,
+      providerType: 'gmail_api',
+      message: `Koneksi Google OAuth 2.0 Valid (${tokenData.email}, Izin Kirim: ${hasSendScope ? 'Aktif' : 'Belum Ada'}, Latensi: ${latencyMs}ms).`,
+      latencyMs,
+      details: {
+        connectedEmail: tokenData.email,
+        scopes: (tokenData.scope || '').split(' '),
+      },
+    });
+  } catch (err: any) {
+    return res.status(200).json({
+      success: false,
+      providerType: 'gmail_api',
+      message: `Gagal memverifikasi token ke server Google: ${err.message}`,
+      latencyMs: Date.now() - startTime,
+    });
+  }
 }

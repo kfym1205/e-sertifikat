@@ -1,9 +1,9 @@
 /**
- * Definisi Tipe Data Arsitektur Adapter Email Terpisah
- * Mendukung: BNN Official SMTP, BNN Approved HTTP Relay, Google Workspace, Resend, dan Diagnostic Fallback.
+ * Definisi Tipe Data Arsitektur Pengiriman Email e-Sertifikat BNN
+ * Menggunakan integrasi resmi Gmail API (OAuth 2.0)
  */
 
-export type DeliveryStrategy = 'bnn_primary_gmail_fallback' | 'bnn_only' | 'gmail_only';
+export type DeliveryStrategy = 'gmail_only';
 
 export type DeliveryStatus =
   | 'pending'
@@ -11,17 +11,12 @@ export type DeliveryStatus =
   | 'delivered'
   | 'temp_failed'
   | 'perm_failed'
-  | 'fallen_back_gmail'
+  | 'fallen_back_gmail' // legacy log compatibility
   | 'awaiting_confirmation'
   | 'action_required'
   | 'failed';
 
-export type EmailProviderType =
-  | 'bnn_smtp'
-  | 'bnn_relay_api'
-  | 'gmail_api'
-  | 'resend'
-  | 'simulation';
+export type EmailProviderType = 'gmail_api' | 'simulation';
 
 export interface EmailPayload {
   to: string;
@@ -45,8 +40,8 @@ export interface SendEmailResult {
   status: DeliveryStatus;
   deliveryStrategy?: DeliveryStrategy;
   usedSender?: string;
-  fallbackReason?: string;
   attemptCount?: number;
+  fallbackReason?: string;
   error?: string;
   note?: string;
   diagnosticCode?: string;
@@ -61,40 +56,13 @@ export interface ConnectionTestResult {
   error?: string;
   latencyMs?: number;
   details?: {
-    host?: string;
-    port?: number;
-    secure?: boolean;
-    authVerified?: boolean;
-    tlsVerified?: boolean;
-    endpointUrl?: string;
-    socketResponse?: string;
-    rejectionReason?: string;
     connectedEmail?: string;
     scopes?: string[];
+    rejectionReason?: string;
   };
-}
-
-export interface BnnSmtpConfig {
-  host: string;
-  port: number;
-  secure: boolean; // true for 465, false for 587
-  user: string;
-  pass?: string;
-  fromAddress: string;
-  rejectUnauthorizedTls?: boolean;
-}
-
-export interface BnnRelayConfig {
-  endpointUrl: string;
-  apiKey?: string;
-  fromAddress: string;
 }
 
 export interface SenderIdentityConfig {
-  bnn: {
-    senderName: string;
-    senderAddress: string;
-  };
   gmail: {
     senderName: string;
     senderAddress: string;
@@ -104,28 +72,10 @@ export interface SenderIdentityConfig {
 export interface EmailProviderRuntimeStatus {
   deliveryStrategy: DeliveryStrategy;
   activeProvider: EmailProviderType;
-  bnnMethod?: 'bnn_smtp' | 'bnn_relay_api';
   isConfigured: boolean;
-  bnnSender: {
-    senderName: string;
-    senderAddress: string;
-  };
   gmailSender: {
     senderName: string;
     senderAddress: string;
-  };
-  bnnSmtp: {
-    host: string;
-    port: number;
-    secure: boolean;
-    user: string;
-    hasPassword: boolean;
-    fromAddress: string;
-  };
-  bnnRelay: {
-    endpointUrl: string;
-    hasApiKey: boolean;
-    fromAddress: string;
   };
   gmail: {
     connected: boolean;
@@ -136,15 +86,6 @@ export interface EmailProviderRuntimeStatus {
     connectedAt?: string;
     lastTestedAt?: string;
     lastError?: string;
-  };
-  resend: {
-    hasApiKey: boolean;
-    fromAddress: string;
-  };
-  lastConnectionTest?: {
-    testedAt: string;
-    success: boolean;
-    message: string;
   };
   lastGmailTest?: {
     testedAt: string;

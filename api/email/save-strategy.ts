@@ -10,10 +10,9 @@ export default async function handler(req: Request, res: Response) {
     return res.status(200).end();
   }
 
-  const body = (req.body && typeof req.body === 'object') ? req.body : {};
   return res.status(200).json({
     success: true,
-    message: 'Strategi pengiriman email dan identitas pengirim berhasil disimpan.',
-    currentStrategy: body.deliveryStrategy || 'bnn_primary_gmail_fallback',
+    message: 'Metode pengiriman e-Sertifikat BNN telah dikunci secara eksklusif menggunakan Gmail API.',
+    currentStrategy: 'gmail_only',
   });
 }

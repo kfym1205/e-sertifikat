@@ -39,6 +39,13 @@ export const AppearanceSettingsView: React.FC<AppearanceSettingsViewProps> = ({
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [fileError, setFileError] = useState('');
 
+  React.useEffect(() => {
+    const unsub = storage.subscribe(() => {
+      setConfig(JSON.parse(JSON.stringify(storage.getAppearance())));
+    });
+    return unsub;
+  }, []);
+
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>, targetField: 'logoUrl' | 'footerLogoUrl') => {
     const file = e.target.files?.[0];
     setFileError('');

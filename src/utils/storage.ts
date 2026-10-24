@@ -56,9 +56,54 @@ class DataStore {
   adminUsers: AdminUser[] = [];
   appearanceConfig: AppearanceConfig = DEFAULT_APPEARANCE_CONFIG;
   isInitialized = false;
+  isSyncing = false;
+  lastSyncedAt?: string;
+  databaseProvider: string = 'local';
+  private listeners: Array<() => void> = [];
 
   constructor() {
     this.init();
+  }
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.push(listener);
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== listener);
+    };
+  }
+
+  notifyListeners(): void {
+    this.listeners.forEach(fn => {
+      try {
+        fn();
+      } catch (err) {
+        console.error('Error notifying storage listener:', err);
+      }
+    });
+  }
+
+  mergeAppearance(incoming?: Partial<AppearanceConfig> | null): AppearanceConfig {
+    if (!incoming || typeof incoming !== 'object') {
+      return { ...DEFAULT_APPEARANCE_CONFIG };
+    }
+    const merged: AppearanceConfig = {
+      ...DEFAULT_APPEARANCE_CONFIG,
+      ...this.appearanceConfig,
+      ...incoming,
+      footer: {
+        ...DEFAULT_APPEARANCE_CONFIG.footer,
+        ...(this.appearanceConfig?.footer || {}),
+        ...(incoming.footer || {}),
+      },
+      theme: {
+        ...DEFAULT_APPEARANCE_CONFIG.theme,
+        ...(this.appearanceConfig?.theme || {}),
+        ...(incoming.theme || {}),
+      },
+    };
+    if (merged.showOnPublic === undefined) merged.showOnPublic = true;
+    if (merged.showOnAdmin === undefined) merged.showOnAdmin = true;
+    return merged;
   }
 
   getDefaultAdminUsers(): AdminUser[] {
@@ -156,7 +201,7 @@ class DataStore {
       this.adminUsers = adminStored ? JSON.parse(adminStored) : this.getDefaultAdminUsers();
 
       const appStored = localStorage.getItem(STORAGE_KEYS.APPEARANCE);
-      this.appearanceConfig = appStored ? JSON.parse(appStored) : DEFAULT_APPEARANCE_CONFIG;
+      this.appearanceConfig = appStored ? this.mergeAppearance(JSON.parse(appStored)) : { ...DEFAULT_APPEARANCE_CONFIG };
       this.applyThemeToDom(this.appearanceConfig.theme);
 
       this.isInitialized = true;
@@ -175,6 +220,102 @@ class DataStore {
       this.applyThemeToDom(this.appearanceConfig.theme);
       this.isInitialized = true;
     }
+
+    // Automatically synchronize with central database when running in browser
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        this.syncWithServer().catch(() => {});
+      }, 50);
+    }
+  }
+
+  /**
+   * Mengambil sinkronisasi penuh dari database terpusat (Supabase / server persisten)
+   */
+  async syncWithServer(): Promise<{ success: boolean; provider?: string }> {
+    if (this.isSyncing) return { success: true };
+    this.isSyncing = true;
+
+    try {
+      const res = await fetch('/api/sync');
+      if (!res.ok) {
+        this.isSyncing = false;
+        return { success: false };
+      }
+      const data = await res.json();
+      if (!data.success) {
+        this.isSyncing = false;
+        return { success: false };
+      }
+
+      // Deteksi jika server masih default baseline DAN perangkat ini memiliki kustomisasi lokal lama
+      const hasLocalCustomAppearance = localStorage.getItem(STORAGE_KEYS.APPEARANCE) !== null;
+      const hasLocalCustomTemplates = localStorage.getItem(STORAGE_KEYS.TEMPLATES) !== null;
+      const hasLocalCustomActivities = localStorage.getItem(STORAGE_KEYS.ACTIVITIES) !== null;
+      const isServerBaseline = (!data.activities || data.activities.length <= 2) && (!data.version || data.version <= 1);
+
+      if ((hasLocalCustomAppearance || hasLocalCustomTemplates || hasLocalCustomActivities) && isServerBaseline) {
+        // Lakukan migrasi otomatis dari data lokal ke database terpusat server
+        console.log('[BNN-SYNC] Memigrasikan kustomisasi lokal administrator ke database terpusat...');
+        await fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            appearance: this.appearanceConfig,
+            activities: this.activities,
+            templates: this.templates,
+            classifications: this.classifications,
+            issuances: this.issuances,
+            counters: this.counters,
+          }),
+        });
+      } else {
+        // Ambil data terbaru dari database terpusat
+        if (data.appearance) {
+          this.appearanceConfig = this.mergeAppearance(data.appearance);
+          this.persist(STORAGE_KEYS.APPEARANCE, this.appearanceConfig);
+          this.applyThemeToDom(this.appearanceConfig.theme);
+        }
+        if (Array.isArray(data.activities) && data.activities.length > 0) {
+          this.activities = data.activities;
+          this.persist(STORAGE_KEYS.ACTIVITIES, this.activities);
+        }
+        if (Array.isArray(data.templates) && data.templates.length > 0) {
+          this.templates = data.templates;
+          this.persist(STORAGE_KEYS.TEMPLATES, this.templates);
+        }
+        if (Array.isArray(data.classifications) && data.classifications.length > 0) {
+          this.classifications = data.classifications;
+          this.persist(STORAGE_KEYS.CLASSIFICATIONS, this.classifications);
+        }
+        if (Array.isArray(data.issuances) && data.issuances.length > 0) {
+          this.issuances = data.issuances;
+          this.persist(STORAGE_KEYS.ISSUANCES, this.issuances);
+        }
+        if (data.counters && typeof data.counters === 'object') {
+          this.counters = data.counters;
+          this.persist(STORAGE_KEYS.COUNTERS, this.counters);
+        }
+        if (Array.isArray(data.auditLogs) && data.auditLogs.length > 0) {
+          this.auditLogs = data.auditLogs;
+          this.persist(STORAGE_KEYS.AUDIT_LOGS, this.auditLogs);
+        }
+        if (Array.isArray(data.adminUsers) && data.adminUsers.length > 0) {
+          this.adminUsers = data.adminUsers;
+          this.persist(STORAGE_KEYS.ADMIN_USERS, this.adminUsers);
+        }
+      }
+
+      this.databaseProvider = data.databaseProvider || (data.isSupabaseActive ? 'supabase_postgresql' : 'persistent_server_storage');
+      this.lastSyncedAt = new Date().toISOString();
+      this.isSyncing = false;
+      this.notifyListeners();
+      return { success: true, provider: this.databaseProvider };
+    } catch (err) {
+      this.isSyncing = false;
+      console.warn('[BNN-SYNC] Gagal terhubung ke endpoint sinkronisasi backend:', err);
+      return { success: false };
+    }
   }
 
   persist(key: string, data: any) {
@@ -191,20 +332,22 @@ class DataStore {
   }
 
   saveAppearance(config: AppearanceConfig): AppearanceConfig {
-    this.appearanceConfig = {
+    this.appearanceConfig = this.mergeAppearance({
       ...config,
       updatedAt: new Date().toISOString(),
       updatedBy: this.getAdminSession()?.email || 'admin@sertifikat.id',
-    };
+    });
     this.persist(STORAGE_KEYS.APPEARANCE, this.appearanceConfig);
     this.applyThemeToDom(this.appearanceConfig.theme);
 
-    // Sync to backend server
+    // Sync to backend persistent database
     fetch('/api/appearance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(this.appearanceConfig),
-    }).catch(() => {});
+    }).catch((err) => {
+      console.warn('[BNN-SYNC] Gagal menyimpan tampilan ke server:', err);
+    });
 
     this.logAudit(
       'UPDATE_APPEARANCE',
@@ -213,6 +356,7 @@ class DataStore {
       'Memperbarui konfigurasi identitas visual, header, footer, dan tema e-Sertifikat BNN'
     );
 
+    this.notifyListeners();
     return this.appearanceConfig;
   }
 
@@ -250,6 +394,17 @@ class DataStore {
       this.logAudit('CREATE_ACTIVITY', 'activity', activity.id, `Membuat kegiatan baru "${activity.name}"`);
     }
     this.persist(STORAGE_KEYS.ACTIVITIES, this.activities);
+
+    // Sync to backend persistent database
+    fetch('/api/activities', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated),
+    }).catch((err) => {
+      console.warn('[BNN-SYNC] Gagal menyimpan kegiatan ke database backend:', err);
+    });
+
+    this.notifyListeners();
     return updated;
   }
 
@@ -259,6 +414,13 @@ class DataStore {
     this.activities = this.activities.filter(a => a.id !== id);
     this.persist(STORAGE_KEYS.ACTIVITIES, this.activities);
     this.logAudit('DELETE_ACTIVITY', 'activity', id, `Menghapus kegiatan "${act.name}"`);
+
+    // Sync to backend persistent database
+    fetch(`/api/activities?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }).catch(() => {});
+
+    this.notifyListeners();
     return true;
   }
 
@@ -286,6 +448,17 @@ class DataStore {
       this.logAudit('CREATE_TEMPLATE', 'template', template.id, `Menambahkan template sertifikat baru "${template.name}"`);
     }
     this.persist(STORAGE_KEYS.TEMPLATES, this.templates);
+
+    // Sync to backend persistent database
+    fetch('/api/templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated),
+    }).catch((err) => {
+      console.warn('[BNN-SYNC] Gagal menyimpan template ke database backend:', err);
+    });
+
+    this.notifyListeners();
     return updated;
   }
 
@@ -293,6 +466,13 @@ class DataStore {
     this.templates = this.templates.filter(t => t.id !== id);
     this.persist(STORAGE_KEYS.TEMPLATES, this.templates);
     this.logAudit('DELETE_TEMPLATE', 'template', id, `Menghapus template ID ${id}`);
+
+    // Sync to backend persistent database
+    fetch(`/api/templates?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }).catch(() => {});
+
+    this.notifyListeners();
     return true;
   }
 
@@ -311,6 +491,14 @@ class DataStore {
       this.logAudit('CREATE_CLASSIFICATION', 'number_config', cls.id, `Menambahkan kode klasifikasi baru ${cls.code}`);
     }
     this.persist(STORAGE_KEYS.CLASSIFICATIONS, this.classifications);
+
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ classifications: this.classifications }),
+    }).catch(() => {});
+
+    this.notifyListeners();
     return cls;
   }
 
@@ -555,6 +743,19 @@ class DataStore {
       this.persist(STORAGE_KEYS.ISSUANCES, this.issuances);
     }
 
+    // Push new issuance and counter to central database
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        issuances: [newIssuance],
+        counters: this.counters,
+      }),
+    }).catch((err) => {
+      console.warn('[BNN-SYNC] Gagal push penerbitan baru ke database terpusat:', err);
+    });
+
+    this.notifyListeners();
     return { success: true, issuance: newIssuance };
   }
 
@@ -982,10 +1183,22 @@ class DataStore {
     user.salt = newSalt;
     user.passwordHash = simpleHashPassword(newPass, newSalt);
     user.updatedAt = new Date().toISOString();
-    this.persist(STORAGE_KEYS.ADMIN_USERS, this.adminUsers);
+    this.syncAdminUsers();
 
     this.logAudit('PASSWORD_CHANGED', 'admin', user.id, `Administrator ${user.email} berhasil mengubah password akun.`);
     return { success: true };
+  }
+
+  private syncAdminUsers() {
+    this.persist(STORAGE_KEYS.ADMIN_USERS, this.adminUsers);
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminUsers: this.adminUsers }),
+    }).catch((err) => {
+      console.warn('[BNN-SYNC] Gagal push adminUsers ke server:', err);
+    });
+    this.notifyListeners();
   }
 
   updateAdminProfile(userId: string, profile: { fullName: string; username: string; email: string; phone?: string }): { success: boolean; user?: AdminUser; error?: string } {
@@ -1015,7 +1228,7 @@ class DataStore {
     user.phone = profile.phone?.trim();
     user.updatedAt = new Date().toISOString();
 
-    this.persist(STORAGE_KEYS.ADMIN_USERS, this.adminUsers);
+    this.syncAdminUsers();
 
     // Update active session if this is the logged-in user
     const currentSession = this.getAdminSession();
@@ -1068,7 +1281,7 @@ class DataStore {
     };
 
     this.adminUsers.push(newUser);
-    this.persist(STORAGE_KEYS.ADMIN_USERS, this.adminUsers);
+    this.syncAdminUsers();
 
     this.logAudit('ADMIN_CREATED', 'admin', newUser.id, `Super Admin membuat akun administrator baru: ${newUser.fullName} (${newUser.email}) dengan peran ${newUser.role}.`);
     return { success: true, user: newUser };
@@ -1127,7 +1340,7 @@ class DataStore {
     }
 
     user.updatedAt = new Date().toISOString();
-    this.persist(STORAGE_KEYS.ADMIN_USERS, this.adminUsers);
+    this.syncAdminUsers();
 
     this.logAudit('ADMIN_ROLE_UPDATED', 'admin', user.id, `Super Admin memperbarui data akun administrator ${user.email} (Peran: ${user.role}, Status Aktif: ${user.isActive}).`);
     return { success: true, user };
@@ -1152,7 +1365,7 @@ class DataStore {
     }
 
     this.adminUsers = this.adminUsers.filter(u => u.id !== targetUserId);
-    this.persist(STORAGE_KEYS.ADMIN_USERS, this.adminUsers);
+    this.syncAdminUsers();
 
     this.logAudit('ADMIN_DELETED', 'admin', targetUserId, `Super Admin mencabut akses dan menghapus akun administrator: ${user.fullName} (${user.email}).`);
     return { success: true };

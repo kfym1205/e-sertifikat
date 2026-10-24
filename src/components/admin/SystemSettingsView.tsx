@@ -11,13 +11,49 @@ import {
   Sliders,
   CheckCircle2,
 } from 'lucide-react';
+import { storage } from '../../utils/storage';
 
 export const SystemSettingsView: React.FC = () => {
   const [copiedSql, setCopiedSql] = useState(false);
   const [copiedEnv, setCopiedEnv] = useState(false);
+  const [dbStatus, setDbStatus] = useState<{
+    provider?: string;
+    isSupabaseActive?: boolean;
+    counts?: { activities: number; templates: number; issuances: number; auditLogs: number };
+    notes?: string;
+  } | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
-  const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
-  const isSupabaseConfigured = Boolean(supabaseUrl && supabaseUrl.includes('supabase.co'));
+  const fetchDbStatus = () => {
+    fetch('/api/db-status')
+      .then((res) => res.json())
+      .then((data) => setDbStatus(data))
+      .catch(() => {});
+  };
+
+  React.useEffect(() => {
+    fetchDbStatus();
+  }, []);
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    setSyncMessage(null);
+    try {
+      const res = await storage.syncWithServer();
+      fetchDbStatus();
+      setSyncMessage(
+        res.success
+          ? 'Sinkronisasi berhasil! Data terpusat paling mutakhir telah dimuat.'
+          : 'Sinkronisasi offline: Menyimpan perubahan pada cache lokal.'
+      );
+    } catch {
+      setSyncMessage('Kendala sinkronisasi dengan server.');
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncMessage(null), 4000);
+    }
+  };
 
   const handleCopySql = () => {
     fetch('/supabase-schema.sql')
@@ -35,26 +71,44 @@ export const SystemSettingsView: React.FC = () => {
   };
 
   const handleCopyEnv = () => {
-    const envContent = `NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
+    const envContent = `SUPABASE_URL="https://your-project.supabase.co"
 SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
-RESEND_API_KEY="re_your_api_key"
-EMAIL_FROM="Sertifikat Panitia <sertifikat@domainanda.com>"
-APP_BASE_URL="https://your-app.vercel.app"`;
+VITE_SUPABASE_URL="https://your-project.supabase.co"
+VITE_SUPABASE_ANON_KEY="your-anon-key"`;
     navigator.clipboard.writeText(envContent);
     setCopiedEnv(true);
     setTimeout(() => setCopiedEnv(false), 2500);
   };
 
+  const isSupabase = dbStatus?.isSupabaseActive;
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-xl font-black text-white tracking-tight">Pengaturan Sistem & Database</h2>
-        <p className="text-xs text-slate-400 mt-1">
-          Status infrastruktur database PostgreSQL, integrasi Supabase, zona waktu operasional, dan konfigurasi deployment Vercel.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-black text-white tracking-tight">Pengaturan Sistem & Database</h2>
+          <p className="text-xs text-slate-400 mt-1">
+            Status infrastruktur database PostgreSQL, integrasi Supabase, zona waktu operasional, dan sinkronisasi lintas perangkat.
+          </p>
+        </div>
+
+        <button
+          onClick={handleManualSync}
+          disabled={isSyncing}
+          className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shrink-0"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+          <span>{isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Sekarang'}</span>
+        </button>
       </div>
+
+      {syncMessage && (
+        <div className="p-3 bg-blue-950/80 border border-blue-700 text-blue-200 rounded-xl text-xs flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0" />
+          <span>{syncMessage}</span>
+        </div>
+      )}
 
       {/* 3 Architecture Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -70,12 +124,19 @@ APP_BASE_URL="https://your-app.vercel.app"`;
           </div>
           <div className="mt-3">
             <span className="text-base font-bold text-white block">
-              {isSupabaseConfigured ? 'Supabase PostgreSQL' : 'Local Persistent Storage'}
+              {isSupabase ? 'Supabase PostgreSQL' : 'Penyimpanan Persisten Server'}
             </span>
             <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1 mt-1">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              Penyimpanan Aktif & Terisolasi
+              {isSupabase
+                ? 'Terhubung ke Database Cloud Supabase'
+                : 'Penyimpanan Server Terpusat Aktif'}
             </span>
+            {dbStatus?.counts && (
+              <span className="text-[10px] text-slate-400 block mt-1">
+                {dbStatus.counts.activities} Kegiatan • {dbStatus.counts.templates} Template • {dbStatus.counts.issuances} Sertifikat
+              </span>
+            )}
           </div>
         </div>
 

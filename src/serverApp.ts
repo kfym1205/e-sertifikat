@@ -111,16 +111,123 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
-// Global runtime appearance cache
-let serverAppearanceState: any = null;
+import { CentralDatabase } from './server/database';
 
-app.get('/api/appearance', (req: Request, res: Response) => {
-  res.json(serverAppearanceState || { status: 'default' });
+// Database Status
+app.get('/api/db-status', async (req: Request, res: Response) => {
+  try {
+    const diagnostic = await CentralDatabase.checkStatus();
+    res.json({
+      status: 'ok',
+      service: 'e-Sertifikat BNN Storage Diagnostics',
+      timestamp: new Date().toISOString(),
+      ...diagnostic,
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      status: 'error',
+      service: 'e-Sertifikat BNN Storage Diagnostics',
+      timestamp: new Date().toISOString(),
+      error: 'Gagal menjalankan diagnostik penyimpanan',
+      message: err?.message || 'Unknown internal error',
+    });
+  }
 });
 
-app.post('/api/appearance', (req: Request, res: Response) => {
-  serverAppearanceState = req.body;
-  res.json({ success: true, message: 'Konfigurasi identitas visual e-Sertifikat BNN tersimpan di server.' });
+// Centralized Sync Endpoint
+app.get('/api/sync', async (req: Request, res: Response) => {
+  try {
+    const data = await CentralDatabase.getAllData();
+    res.json({ success: true, ...data });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message });
+  }
+});
+
+app.post('/api/sync', async (req: Request, res: Response) => {
+  try {
+    const result = await CentralDatabase.syncPush(req.body);
+    res.json({ ...result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message });
+  }
+});
+
+// Appearance Endpoints
+app.get('/api/appearance', async (req: Request, res: Response) => {
+  try {
+    const appearance = await CentralDatabase.getAppearance();
+    res.json(appearance);
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message });
+  }
+});
+
+app.post('/api/appearance', async (req: Request, res: Response) => {
+  try {
+    const saved = await CentralDatabase.saveAppearance(req.body);
+    res.json({ success: true, message: 'Identitas visual e-Sertifikat BNN tersimpan di database.', appearance: saved });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message });
+  }
+});
+
+// Activities Endpoints
+app.get('/api/activities', async (req: Request, res: Response) => {
+  try {
+    const data = await CentralDatabase.getAllData();
+    res.json(data.activities);
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message });
+  }
+});
+
+app.post('/api/activities', async (req: Request, res: Response) => {
+  try {
+    const saved = await CentralDatabase.saveActivity(req.body);
+    res.json({ success: true, activity: saved });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message });
+  }
+});
+
+app.delete('/api/activities', async (req: Request, res: Response) => {
+  try {
+    const id = req.query.id as string;
+    await CentralDatabase.deleteActivity(id);
+    res.json({ success: true, message: 'Kegiatan berhasil dihapus.' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message });
+  }
+});
+
+// Templates Endpoints
+app.get('/api/templates', async (req: Request, res: Response) => {
+  try {
+    const data = await CentralDatabase.getAllData();
+    res.json(data.templates);
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message });
+  }
+});
+
+app.post('/api/templates', async (req: Request, res: Response) => {
+  try {
+    const saved = await CentralDatabase.saveTemplate(req.body);
+    res.json({ success: true, template: saved });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message });
+  }
+});
+
+app.delete('/api/templates', async (req: Request, res: Response) => {
+  try {
+    const id = req.query.id as string;
+    await CentralDatabase.deleteTemplate(id);
+    res.json({ success: true, message: 'Template berhasil dihapus.' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message });
+  }
 });
 
 // ====================================================================

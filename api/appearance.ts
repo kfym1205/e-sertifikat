@@ -1,8 +1,7 @@
 import type { Request, Response } from 'express';
+import { CentralDatabase } from '../src/server/database';
 
-let appearanceState: any = null;
-
-export default function handler(req: Request, res: Response) {
+export default async function handler(req: Request, res: Response) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
@@ -12,10 +11,33 @@ export default function handler(req: Request, res: Response) {
     return res.status(200).end();
   }
 
-  if (req.method === 'POST') {
-    appearanceState = req.body;
-    return res.status(200).json({ success: true, message: 'Identitas visual tersimpan.' });
-  }
+  try {
+    if (req.method === 'POST') {
+      let body: any = req.body;
+      if (typeof body === 'string') {
+        try {
+          body = JSON.parse(body);
+        } catch {
+          body = {};
+        }
+      } else if (!body || typeof body !== 'object') {
+        body = {};
+      }
 
-  return res.status(200).json(appearanceState || { status: 'default' });
+      const saved = await CentralDatabase.saveAppearance(body);
+      return res.status(200).json({
+        success: true,
+        message: 'Identitas visual, logo, dan footer e-Sertifikat BNN berhasil disimpan secara persisten di database terpusat.',
+        appearance: saved,
+      });
+    }
+
+    const appearance = await CentralDatabase.getAppearance();
+    return res.status(200).json(appearance);
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      error: `Gagal memproses konfigurasi identitas visual: ${err?.message || 'Server error'}`,
+    });
+  }
 }

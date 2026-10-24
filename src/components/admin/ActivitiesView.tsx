@@ -31,6 +31,13 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({ onNavigate }) =>
   const [activeTab, setActiveTab] = useState<'general' | 'number' | 'form' | 'email'>('general');
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    const unsub = storage.subscribe(() => {
+      setActivities(storage.getActivities());
+    });
+    return unsub;
+  }, []);
+
   const templates = storage.getTemplates();
   const classifications = storage.getClassifications();
 

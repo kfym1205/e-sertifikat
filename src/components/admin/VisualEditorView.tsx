@@ -66,11 +66,22 @@ export const VisualEditorView: React.FC<VisualEditorViewProps> = ({ initialActiv
   const widthMm = isLandscape ? 297 : 210;
   const heightMm = isLandscape ? 210 : 297;
 
-  // Sync state if activity selector changes
+  // Sync state if activity selector changes or central database sync occurs
   useEffect(() => {
     if (currentActivity?.layoutElements) {
       setElements(JSON.parse(JSON.stringify(currentActivity.layoutElements)));
     }
+  }, [selectedActivityId]);
+
+  useEffect(() => {
+    const unsub = storage.subscribe(() => {
+      const freshActivities = storage.getActivities();
+      const freshCurrent = freshActivities.find((a) => a.id === selectedActivityId) || freshActivities[0];
+      if (freshCurrent?.layoutElements) {
+        setElements(JSON.parse(JSON.stringify(freshCurrent.layoutElements)));
+      }
+    });
+    return unsub;
   }, [selectedActivityId]);
 
   const activeElement = elements.find((e) => e.id === selectedElementId) || elements[0];

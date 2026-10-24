@@ -52,6 +52,11 @@ export default function App() {
       setAdminSession(session);
     }
 
+    // Subscribe to central database sync events
+    const unsubscribe = storage.subscribe(() => {
+      setAppearance({ ...storage.getAppearance() });
+    });
+
     // Check pathname for /verifikasi/:id
     const path = window.location.pathname;
     if (path.startsWith('/verifikasi/')) {
@@ -61,6 +66,10 @@ export default function App() {
         setCurrentView('public_verify');
       }
     }
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const handleNavigate = (view: string, extraParam?: string) => {

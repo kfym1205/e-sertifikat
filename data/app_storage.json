@@ -1,0 +1,656 @@
+{
+  "appearance": {
+    "appName": "e-Sertifikat BNN RI Terpadu",
+    "footer": {
+      "officeAddress": "Jl. MT Haryono No. 11, Cawang, Jakarta Timur",
+      "contactPhone": "08123456789"
+    },
+    "updatedAt": "2026-10-24T07:14:16.499Z"
+  },
+  "activities": [
+    {
+      "id": "act_bnnk_relawan_2026",
+      "slug": "pelatihan-relawan-anti-narkoba-2026",
+      "name": "Pelatihan Relawan Penggiat P4GN 2026",
+      "description": "Peningkatan kapasitas dan peran serta relawan anti narkoba dalam mewujudkan lingkungan masyarakat yang bersih dari penyalahgunaan narkotika.",
+      "certificateType": "Sertifikat Kelulusan & Pengukuhan",
+      "templateId": "tmpl_royal_gold_landscape",
+      "layoutElements": [
+        {
+          "id": "reg_number",
+          "label": "Nomor Registrasi",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 62,
+          "fontSizePt": 11,
+          "fontFamily": "Inter",
+          "color": "#475569",
+          "textAlign": "center",
+          "fontWeight": "600",
+          "sampleValue": "ST/01/RLN/KA/X/2026/BNNK"
+        },
+        {
+          "id": "participant_name",
+          "label": "Nama Peserta",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 104,
+          "fontSizePt": 26,
+          "fontFamily": "Playfair Display",
+          "color": "#0f172a",
+          "textAlign": "center",
+          "fontWeight": "bold",
+          "textTransform": "uppercase",
+          "maxWidthMm": 240,
+          "sampleValue": "MUHAMMAD RIZKY PRATAMA, S.T."
+        },
+        {
+          "id": "extra_text",
+          "label": "Teks Keterangan / Peran",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 122,
+          "fontSizePt": 12,
+          "fontFamily": "Plus Jakarta Sans",
+          "color": "#334155",
+          "textAlign": "center",
+          "fontWeight": "normal",
+          "maxWidthMm": 230,
+          "sampleValue": "Atas partisipasi aktif dan kontribusi luar biasa sebagai Peserta dalam rangkaian kegiatan"
+        },
+        {
+          "id": "cert_date",
+          "label": "Tanggal Sertifikat",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 144,
+          "fontSizePt": 12,
+          "fontFamily": "Plus Jakarta Sans",
+          "color": "#1e293b",
+          "textAlign": "center",
+          "fontWeight": "600",
+          "sampleValue": "Gorontalo, 21 Oktober 2026"
+        },
+        {
+          "id": "qr_code",
+          "label": "QR Code Verifikasi",
+          "enabled": true,
+          "xMm": 252,
+          "yMm": 156,
+          "fontSizePt": 18,
+          "fontFamily": "Inter",
+          "color": "#0f172a",
+          "textAlign": "center",
+          "fontWeight": "normal"
+        }
+      ],
+      "registrationNumberConfig": {
+        "id": "num_cfg_bnnk",
+        "name": "Format Standar Instansi BNNK",
+        "pattern": "{JENIS}/{NOMOR_URUT}/{KLASIFIKASI}/{UNIT}/{BULAN_ROMAWI}/{TAHUN}/{INSTANSI}",
+        "separator": "/",
+        "digitCount": 2,
+        "startNumber": 1,
+        "scope": "per_activity",
+        "resetPolicy": "yearly",
+        "docTypeCode": "ST",
+        "classificationCode": "RLN",
+        "unitCode": "KA",
+        "institutionCode": "BNNK",
+        "monthFormat": "roman"
+      },
+      "startDate": "2026-10-01",
+      "endDate": "2026-11-30",
+      "isActive": true,
+      "isArchived": false,
+      "duplicatePolicy": "disallow",
+      "dateMode": "server_today",
+      "timezone": "Asia/Makassar",
+      "formSettings": {
+        "requirePhone": true,
+        "requireInstitution": true,
+        "requireCustomField": true,
+        "customFieldLabel": "Pekerjaan / Jabatan Saat Ini"
+      },
+      "emailSettings": {
+        "subject": "Sertifikat Resmi Kegiatan: Pelatihan Relawan Penggiat P4GN 2026",
+        "senderName": "Panitia Sertifikasi BNNK",
+        "attachPdf": true,
+        "bodyTemplate": "Yth. [Nama Peserta],\n\nTerima kasih atas partisipasi aktif dan dedikasi Anda dalam kegiatan [Nama Kegiatan].\n\nSertifikat penghargaan Anda telah resmi diterbitkan oleh sistem dengan rincian berikut:\n• Nama Lengkap: [Nama Peserta]\n• Nomor Registrasi: [Nomor Registrasi]\n• Tanggal Penerbitan: [Tanggal Sertifikat]\n• Tautan Verifikasi: [Tautan Verifikasi]\n\nSertifikat dokumen PDF berukuran A4 terlampir di dalam email ini. Anda dapat mengunduh dan menyimpannya sebagai berkas sah.\n\nSalam hormat,\nPanitia [Nama Kegiatan]"
+      },
+      "createdAt": "2026-10-10T02:00:00.000Z",
+      "updatedAt": "2026-10-10T02:00:00.000Z"
+    },
+    {
+      "id": "act_kominfo_digital_2026",
+      "slug": "workshop-digitalisasi-layanan-publik",
+      "name": "Workshop Transformasi Digital Layanan Publik",
+      "description": "Akselerasi adopsi teknologi informasi dan otomatisasi proses administrasi terpadu bagi aparatur pemerintah daerah.",
+      "certificateType": "Sertifikat Kompetensi Teknis",
+      "templateId": "tmpl_modern_navy_landscape",
+      "layoutElements": [
+        {
+          "id": "reg_number",
+          "label": "Nomor Registrasi",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 62,
+          "fontSizePt": 11,
+          "fontFamily": "Inter",
+          "color": "#475569",
+          "textAlign": "center",
+          "fontWeight": "600",
+          "sampleValue": "ST/01/RLN/KA/X/2026/BNNK"
+        },
+        {
+          "id": "participant_name",
+          "label": "Nama Peserta",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 104,
+          "fontSizePt": 26,
+          "fontFamily": "Playfair Display",
+          "color": "#0f172a",
+          "textAlign": "center",
+          "fontWeight": "bold",
+          "textTransform": "uppercase",
+          "maxWidthMm": 240,
+          "sampleValue": "MUHAMMAD RIZKY PRATAMA, S.T."
+        },
+        {
+          "id": "extra_text",
+          "label": "Teks Keterangan / Peran",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 122,
+          "fontSizePt": 12,
+          "fontFamily": "Plus Jakarta Sans",
+          "color": "#334155",
+          "textAlign": "center",
+          "fontWeight": "normal",
+          "maxWidthMm": 230,
+          "sampleValue": "Atas partisipasi aktif dan kontribusi luar biasa sebagai Peserta dalam rangkaian kegiatan"
+        },
+        {
+          "id": "cert_date",
+          "label": "Tanggal Sertifikat",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 144,
+          "fontSizePt": 12,
+          "fontFamily": "Plus Jakarta Sans",
+          "color": "#1e293b",
+          "textAlign": "center",
+          "fontWeight": "600",
+          "sampleValue": "Gorontalo, 21 Oktober 2026"
+        },
+        {
+          "id": "qr_code",
+          "label": "QR Code Verifikasi",
+          "enabled": true,
+          "xMm": 252,
+          "yMm": 156,
+          "fontSizePt": 18,
+          "fontFamily": "Inter",
+          "color": "#0f172a",
+          "textAlign": "center",
+          "fontWeight": "normal"
+        }
+      ],
+      "registrationNumberConfig": {
+        "id": "num_cfg_kominfo",
+        "name": "Format Standar Kominfo",
+        "pattern": "{JENIS}/{NOMOR_URUT}/{KLASIFIKASI}/{UNIT}/{BULAN_ROMAWI}/{TAHUN}/{INSTANSI}",
+        "separator": "/",
+        "digitCount": 3,
+        "startNumber": 1,
+        "scope": "per_activity",
+        "resetPolicy": "yearly",
+        "docTypeCode": "PG",
+        "classificationCode": "PLT",
+        "unitCode": "GO",
+        "institutionCode": "DISKOMINFO",
+        "monthFormat": "roman"
+      },
+      "startDate": "2026-10-05",
+      "endDate": "2026-12-15",
+      "isActive": true,
+      "isArchived": false,
+      "duplicatePolicy": "reissue",
+      "dateMode": "server_today",
+      "timezone": "Asia/Makassar",
+      "formSettings": {
+        "requirePhone": true,
+        "requireInstitution": true,
+        "requireCustomField": false
+      },
+      "emailSettings": {
+        "subject": "Sertifikat Partisipasi: Workshop Transformasi Digital Layanan Publik",
+        "senderName": "Diskominfo Pelatihan Digital",
+        "attachPdf": true,
+        "bodyTemplate": "Halo [Nama Peserta],\n\nSelamat! Sertifikat kegiatan [Nama Kegiatan] telah siap.\n\nNomor Registrasi Anda: [Nomor Registrasi]\nTanggal Penerbitan: [Tanggal Sertifikat]\n\nDokumen resmi terlampir pada email ini. Keaslian dokumen dapat dicek langsung melalui QR Code atau tautan verifikasi resmi.\n\nSalam hangat,\nTim Pelaksana Diskominfo"
+      },
+      "createdAt": "2026-10-12T04:00:00.000Z",
+      "updatedAt": "2026-10-12T04:00:00.000Z"
+    }
+  ],
+  "templates": [
+    {
+      "id": "tmpl_royal_gold_landscape",
+      "name": "Royal Gold Klasik (Landscape)",
+      "orientation": "landscape",
+      "bgImageUrl": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%201122%20794%22%20width%3D%221122%22%20height%3D%22794%22%3E%0A%20%20%20%20%3Cdefs%3E%0A%20%20%20%20%20%20%3ClinearGradient%20id%3D%22gold%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23b48328%22%20%2F%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%2225%25%22%20stop-color%3D%22%23d4af37%22%20%2F%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%23fdf1a9%22%20%2F%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%2275%25%22%20stop-color%3D%22%23d4af37%22%20%2F%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23996515%22%20%2F%3E%0A%20%20%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%20%20%20%20%3ClinearGradient%20id%3D%22blueHeader%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%220%25%22%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230f172a%22%20%2F%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231e293b%22%20%2F%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230f172a%22%20%2F%3E%0A%20%20%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%20%20%20%20%3Cpattern%20id%3D%22guilloche%22%20width%3D%2240%22%20height%3D%2240%22%20patternUnits%3D%22userSpaceOnUse%22%3E%0A%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M%200%2C20%20Q%2010%2C0%2020%2C20%20T%2040%2C20%22%20fill%3D%22none%22%20stroke%3D%22%23e2d4a8%22%20stroke-width%3D%220.7%22%20opacity%3D%220.35%22%2F%3E%0A%20%20%20%20%20%20%3C%2Fpattern%3E%0A%20%20%20%20%3C%2Fdefs%3E%0A%0A%20%20%20%20%3C!--%20Background%20Base%20--%3E%0A%20%20%20%20%3Crect%20width%3D%221122%22%20height%3D%22794%22%20fill%3D%22%23faf9f6%22%20%2F%3E%0A%20%20%20%20%3Crect%20width%3D%221122%22%20height%3D%22794%22%20fill%3D%22url(%23guilloche)%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Outer%20Gold%20Border%20--%3E%0A%20%20%20%20%3Crect%20x%3D%2224%22%20y%3D%2224%22%20width%3D%221074%22%20height%3D%22746%22%20fill%3D%22none%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%226%22%20rx%3D%226%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Inner%20Slim%20Border%20--%3E%0A%20%20%20%20%3Crect%20x%3D%2236%22%20y%3D%2236%22%20width%3D%221050%22%20height%3D%22722%22%20fill%3D%22none%22%20stroke%3D%22%23b48328%22%20stroke-width%3D%221.5%22%20%2F%3E%0A%20%20%20%20%3Crect%20x%3D%2242%22%20y%3D%2242%22%20width%3D%221038%22%20height%3D%22710%22%20fill%3D%22none%22%20stroke%3D%22%230f172a%22%20stroke-width%3D%221%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Corner%20Ornaments%20--%3E%0A%20%20%20%20%3C!--%20Top-Left%20--%3E%0A%20%20%20%20%3Cpath%20d%3D%22M%2042%2C75%20L%2075%2C42%20M%2042%2C90%20L%2090%2C42%20M%2042%2C60%20L%2060%2C42%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%222%22%20fill%3D%22none%22%20%2F%3E%0A%20%20%20%20%3Ccircle%20cx%3D%2256%22%20cy%3D%2256%22%20r%3D%224%22%20fill%3D%22%23b48328%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Top-Right%20--%3E%0A%20%20%20%20%3Cpath%20d%3D%22M%201080%2C75%20L%201047%2C42%20M%201080%2C90%20L%201032%2C42%20M%201080%2C60%20L%201062%2C42%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%222%22%20fill%3D%22none%22%20%2F%3E%0A%20%20%20%20%3Ccircle%20cx%3D%221066%22%20cy%3D%2256%22%20r%3D%224%22%20fill%3D%22%23b48328%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Bottom-Left%20--%3E%0A%20%20%20%20%3Cpath%20d%3D%22M%2042%2C719%20L%2075%2C752%20M%2042%2C704%20L%2090%2C752%20M%2042%2C734%20L%2060%2C752%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%222%22%20fill%3D%22none%22%20%2F%3E%0A%20%20%20%20%3Ccircle%20cx%3D%2256%22%20cy%3D%22738%22%20r%3D%224%22%20fill%3D%22%23b48328%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Bottom-Right%20--%3E%0A%20%20%20%20%3Cpath%20d%3D%22M%201080%2C719%20L%201047%2C752%20M%201080%2C704%20L%201032%2C752%20M%201080%2C734%20L%201062%2C752%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%222%22%20fill%3D%22none%22%20%2F%3E%0A%20%20%20%20%3Ccircle%20cx%3D%221066%22%20cy%3D%22738%22%20r%3D%224%22%20fill%3D%22%23b48328%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Instansi%20Header%20Decorative%20Ribbon%20%2F%20Emblem%20--%3E%0A%20%20%20%20%3Cg%20transform%3D%22translate(561%2C%2095)%22%3E%0A%20%20%20%20%20%20%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%2232%22%20fill%3D%22%230f172a%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%223%22%20%2F%3E%0A%20%20%20%20%20%20%3Cpath%20d%3D%22M%20-12%2C-8%20L%2012%2C-8%20L%200%2C16%20Z%22%20fill%3D%22%23d4af37%22%20%2F%3E%0A%20%20%20%20%20%20%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%228%22%20fill%3D%22%23faf9f6%22%20%2F%3E%0A%20%20%20%20%20%20%3C!--%20Star%20Ornaments%20--%3E%0A%20%20%20%20%20%20%3Cpolygon%20points%3D%220%2C-18%203%2C-10%2011%2C-10%205%2C-4%207%2C4%200%2C-1%20-7%2C4%20-5%2C-4%20-11%2C-10%20-3%2C-10%22%20fill%3D%22url(%23gold)%22%20transform%3D%22scale(0.8)%20translate(0%2C%20-5)%22%20%2F%3E%0A%20%20%20%20%3C%2Fg%3E%0A%0A%20%20%20%20%3C!--%20Main%20Title%20Typography%20--%3E%0A%20%20%20%20%3Ctext%20x%3D%22561%22%20y%3D%22175%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Cinzel'%2C%20'Times%20New%20Roman'%2C%20serif%22%20font-size%3D%2234%22%20font-weight%3D%22700%22%20letter-spacing%3D%228%22%20fill%3D%22%230f172a%22%3ESERTIFIKAT%20PENGHARGAAN%3C%2Ftext%3E%0A%20%20%20%20%0A%20%20%20%20%3C!--%20Subtitle%20divider%20line%20--%3E%0A%20%20%20%20%3Cg%20transform%3D%22translate(401%2C%20190)%22%3E%0A%20%20%20%20%20%20%3Cline%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%22130%22%20y2%3D%220%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%222%22%20%2F%3E%0A%20%20%20%20%20%20%3Cpolygon%20points%3D%22160%2C-4%20164%2C0%20160%2C4%20156%2C0%22%20fill%3D%22%23b48328%22%20%2F%3E%0A%20%20%20%20%20%20%3Cline%20x1%3D%22190%22%20y1%3D%220%22%20x2%3D%22320%22%20y2%3D%220%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%222%22%20%2F%3E%0A%20%20%20%20%3C%2Fg%3E%0A%0A%20%20%20%20%3Ctext%20x%3D%22561%22%20y%3D%22222%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20sans-serif%22%20font-size%3D%2214%22%20font-weight%3D%22500%22%20letter-spacing%3D%224%22%20fill%3D%22%2364748b%22%3EDIBERIKAN%20DENGAN%20BANGGA%20KEPADA%3C%2Ftext%3E%0A%0A%20%20%20%20%3C!--%20Decorative%20Bottom%20Signatures%20Areas%20--%3E%0A%20%20%20%20%3Cg%20transform%3D%22translate(246.84%2C%20684)%22%3E%0A%20%20%20%20%20%20%3Cline%20x1%3D%22-90%22%20y1%3D%220%22%20x2%3D%2290%22%20y2%3D%220%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%221%22%20%2F%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%220%22%20y%3D%2220%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20sans-serif%22%20font-size%3D%2212%22%20font-weight%3D%22600%22%20fill%3D%22%231e293b%22%3EPimpinan%20Instansi%3C%2Ftext%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%220%22%20y%3D%2234%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20sans-serif%22%20font-size%3D%2210%22%20fill%3D%22%2364748b%22%3EKetua%20Penyelenggara%3C%2Ftext%3E%0A%20%20%20%20%3C%2Fg%3E%0A%0A%20%20%20%20%3C!--%20Golden%20Stamp%20Emblem%20in%20center%20bottom%20--%3E%0A%20%20%20%20%3Cg%20transform%3D%22translate(561%2C%20684)%22%3E%0A%20%20%20%20%20%20%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%2228%22%20fill%3D%22%23f8fafc%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%222.5%22%20stroke-dasharray%3D%223%2C2%22%20%2F%3E%0A%20%20%20%20%20%20%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%2222%22%20fill%3D%22none%22%20stroke%3D%22%23d4af37%22%20stroke-width%3D%221%22%20%2F%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%220%22%20y%3D%22-3%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Cinzel'%2C%20serif%22%20font-size%3D%227%22%20font-weight%3D%22700%22%20letter-spacing%3D%221%22%20fill%3D%22%23b48328%22%3ERESMI%3C%2Ftext%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%220%22%20y%3D%227%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Cinzel'%2C%20serif%22%20font-size%3D%226%22%20font-weight%3D%22600%22%20fill%3D%22%230f172a%22%3ETERVERIFIKASI%3C%2Ftext%3E%0A%20%20%20%20%3C%2Fg%3E%0A%0A%20%20%20%20%3Cg%20transform%3D%22translate(875.1600000000001%2C%20684)%22%3E%0A%20%20%20%20%20%20%3Cline%20x1%3D%22-90%22%20y1%3D%220%22%20x2%3D%2290%22%20y2%3D%220%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%221%22%20%2F%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%220%22%20y%3D%2220%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20sans-serif%22%20font-size%3D%2212%22%20font-weight%3D%22600%22%20fill%3D%22%231e293b%22%3ESekretaris%20Panitia%3C%2Ftext%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%220%22%20y%3D%2234%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20sans-serif%22%20font-size%3D%2210%22%20fill%3D%22%2364748b%22%3EKoordinator%20Sertifikasi%3C%2Ftext%3E%0A%20%20%20%20%3C%2Fg%3E%0A%20%20%3C%2Fsvg%3E",
+      "widthMm": 297,
+      "heightMm": 210,
+      "createdAt": "2026-10-01T08:00:00.000Z",
+      "updatedAt": "2026-10-01T08:00:00.000Z",
+      "version": 1,
+      "isDefault": true
+    },
+    {
+      "id": "tmpl_modern_navy_landscape",
+      "name": "Modern Corporate Navy (Landscape)",
+      "orientation": "landscape",
+      "bgImageUrl": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%201122%20794%22%20width%3D%221122%22%20height%3D%22794%22%3E%0A%20%20%20%20%3Cdefs%3E%0A%20%20%20%20%20%20%3ClinearGradient%20id%3D%22navyGrad%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230284c7%22%20%2F%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230f172a%22%20%2F%3E%0A%20%20%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%20%20%20%20%3ClinearGradient%20id%3D%22accentGrad%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%220%25%22%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%2338bdf8%22%20%2F%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23818cf8%22%20%2F%3E%0A%20%20%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%20%20%3C%2Fdefs%3E%0A%0A%20%20%20%20%3Crect%20width%3D%221122%22%20height%3D%22794%22%20fill%3D%22%23ffffff%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Modern%20Top%20Left%20Geometric%20Accent%20--%3E%0A%20%20%20%20%3Cpolygon%20points%3D%220%2C0%20260%2C0%20180%2C90%200%2C60%22%20fill%3D%22url(%23navyGrad)%22%20%2F%3E%0A%20%20%20%20%3Cpolygon%20points%3D%220%2C60%20180%2C90%20120%2C130%200%2C90%22%20fill%3D%22url(%23accentGrad)%22%20opacity%3D%220.8%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Modern%20Bottom%20Right%20Geometric%20Accent%20--%3E%0A%20%20%20%20%3Cpolygon%20points%3D%221122%2C794%20842%2C794%20932%2C694%201122%2C724%22%20fill%3D%22url(%23navyGrad)%22%20%2F%3E%0A%20%20%20%20%3Cpolygon%20points%3D%221122%2C724%20932%2C694%201002%2C654%201122%2C694%22%20fill%3D%22url(%23accentGrad)%22%20opacity%3D%220.8%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Inner%20Border%20Line%20--%3E%0A%20%20%20%20%3Crect%20x%3D%2240%22%20y%3D%2240%22%20width%3D%221042%22%20height%3D%22714%22%20fill%3D%22none%22%20stroke%3D%22%23e2e8f0%22%20stroke-width%3D%222%22%20rx%3D%224%22%20%2F%3E%0A%20%20%20%20%3Crect%20x%3D%2248%22%20y%3D%2248%22%20width%3D%221026%22%20height%3D%22698%22%20fill%3D%22none%22%20stroke%3D%22%230284c7%22%20stroke-width%3D%220.8%22%20stroke-dasharray%3D%226%2C4%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Header%20Title%20--%3E%0A%20%20%20%20%3Ctext%20x%3D%22561%22%20y%3D%22160%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20sans-serif%22%20font-size%3D%2234%22%20font-weight%3D%22800%22%20letter-spacing%3D%226%22%20fill%3D%22%230f172a%22%3ECERTIFICATE%20OF%20RECOGNITION%3C%2Ftext%3E%0A%20%20%20%20%3Ctext%20x%3D%22561%22%20y%3D%22195%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20sans-serif%22%20font-size%3D%2214%22%20font-weight%3D%22600%22%20letter-spacing%3D%223%22%20fill%3D%22%230284c7%22%3ESERTIFIKAT%20KEPESERTAAN%20%26%20APRESIASI%3C%2Ftext%3E%0A%0A%20%20%20%20%3C!--%20Signatures%20--%3E%0A%20%20%20%20%3Cg%20transform%3D%22translate(280.5%2C%20694)%22%3E%0A%20%20%20%20%20%20%3Cline%20x1%3D%22-80%22%20y1%3D%220%22%20x2%3D%2280%22%20y2%3D%220%22%20stroke%3D%22%23cbd5e1%22%20stroke-width%3D%221.5%22%20%2F%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%220%22%20y%3D%2220%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20sans-serif%22%20font-size%3D%2212%22%20font-weight%3D%22600%22%20fill%3D%22%23334155%22%3EDirektur%20Program%3C%2Ftext%3E%0A%20%20%20%20%3C%2Fg%3E%0A%0A%20%20%20%20%3Cg%20transform%3D%22translate(841.5%2C%20694)%22%3E%0A%20%20%20%20%20%20%3Cline%20x1%3D%22-80%22%20y1%3D%220%22%20x2%3D%2280%22%20y2%3D%220%22%20stroke%3D%22%23cbd5e1%22%20stroke-width%3D%221.5%22%20%2F%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%220%22%20y%3D%2220%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20sans-serif%22%20font-size%3D%2212%22%20font-weight%3D%22600%22%20fill%3D%22%23334155%22%3EKetua%20Komite%20Penilai%3C%2Ftext%3E%0A%20%20%20%20%3C%2Fg%3E%0A%20%20%3C%2Fsvg%3E",
+      "widthMm": 297,
+      "heightMm": 210,
+      "createdAt": "2026-10-02T09:00:00.000Z",
+      "updatedAt": "2026-10-02T09:00:00.000Z",
+      "version": 1
+    },
+    {
+      "id": "tmpl_emerald_vintage_landscape",
+      "name": "Emerald Hijau Zamrud (Landscape)",
+      "orientation": "landscape",
+      "bgImageUrl": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%201122%20794%22%20width%3D%221122%22%20height%3D%22794%22%3E%0A%20%20%20%20%3Cdefs%3E%0A%20%20%20%20%20%20%3ClinearGradient%20id%3D%22emerald%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23064e3b%22%20%2F%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%23047857%22%20%2F%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23065f46%22%20%2F%3E%0A%20%20%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%20%20%3C%2Fdefs%3E%0A%0A%20%20%20%20%3Crect%20width%3D%221122%22%20height%3D%22794%22%20fill%3D%22%23fdfbf7%22%20%2F%3E%0A%0A%20%20%20%20%3Crect%20x%3D%2225%22%20y%3D%2225%22%20width%3D%221072%22%20height%3D%22744%22%20fill%3D%22none%22%20stroke%3D%22%23047857%22%20stroke-width%3D%224%22%20%2F%3E%0A%20%20%20%20%3Crect%20x%3D%2235%22%20y%3D%2235%22%20width%3D%221052%22%20height%3D%22724%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20%2F%3E%0A%0A%20%20%20%20%3Ctext%20x%3D%22561%22%20y%3D%22170%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Playfair%20Display'%2C%20serif%22%20font-size%3D%2238%22%20font-weight%3D%22700%22%20letter-spacing%3D%224%22%20fill%3D%22%23064e3b%22%3ESERTIFIKAT%20KELULUSAN%3C%2Ftext%3E%0A%20%20%20%20%3Ctext%20x%3D%22561%22%20y%3D%22205%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Inter'%2C%20sans-serif%22%20font-size%3D%2213%22%20font-weight%3D%22600%22%20letter-spacing%3D%223%22%20fill%3D%22%23b45309%22%3EDIBERIKAN%20ATAS%20PARTISIPASI%20DAN%20KELULUSAN%20KOMPETENSI%3C%2Ftext%3E%0A%0A%20%20%20%20%3Cg%20transform%3D%22translate(280.5%2C%20689)%22%3E%0A%20%20%20%20%20%20%3Cline%20x1%3D%22-80%22%20y1%3D%220%22%20x2%3D%2280%22%20y2%3D%220%22%20stroke%3D%22%23047857%22%20stroke-width%3D%221%22%20%2F%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%220%22%20y%3D%2220%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Inter'%2C%20sans-serif%22%20font-size%3D%2211%22%20font-weight%3D%22600%22%20fill%3D%22%23064e3b%22%3EInstruktur%20Pelatihan%3C%2Ftext%3E%0A%20%20%20%20%3C%2Fg%3E%0A%0A%20%20%20%20%3Cg%20transform%3D%22translate(841.5%2C%20689)%22%3E%0A%20%20%20%20%20%20%3Cline%20x1%3D%22-80%22%20y1%3D%220%22%20x2%3D%2280%22%20y2%3D%220%22%20stroke%3D%22%23047857%22%20stroke-width%3D%221%22%20%2F%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%220%22%20y%3D%2220%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Inter'%2C%20sans-serif%22%20font-size%3D%2211%22%20font-weight%3D%22600%22%20fill%3D%22%23064e3b%22%3EKepala%20Lembaga%3C%2Ftext%3E%0A%20%20%20%20%3C%2Fg%3E%0A%20%20%3C%2Fsvg%3E",
+      "widthMm": 297,
+      "heightMm": 210,
+      "createdAt": "2026-10-03T10:00:00.000Z",
+      "updatedAt": "2026-10-03T10:00:00.000Z",
+      "version": 1
+    },
+    {
+      "id": "tmpl_royal_gold_portrait",
+      "name": "Royal Gold Formal (Portrait)",
+      "orientation": "portrait",
+      "bgImageUrl": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20794%201122%22%20width%3D%22794%22%20height%3D%221122%22%3E%0A%20%20%20%20%3Cdefs%3E%0A%20%20%20%20%20%20%3ClinearGradient%20id%3D%22gold%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23b48328%22%20%2F%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%2225%25%22%20stop-color%3D%22%23d4af37%22%20%2F%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%23fdf1a9%22%20%2F%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%2275%25%22%20stop-color%3D%22%23d4af37%22%20%2F%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23996515%22%20%2F%3E%0A%20%20%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%20%20%20%20%3ClinearGradient%20id%3D%22blueHeader%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%220%25%22%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230f172a%22%20%2F%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231e293b%22%20%2F%3E%0A%20%20%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230f172a%22%20%2F%3E%0A%20%20%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%20%20%20%20%3Cpattern%20id%3D%22guilloche%22%20width%3D%2240%22%20height%3D%2240%22%20patternUnits%3D%22userSpaceOnUse%22%3E%0A%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M%200%2C20%20Q%2010%2C0%2020%2C20%20T%2040%2C20%22%20fill%3D%22none%22%20stroke%3D%22%23e2d4a8%22%20stroke-width%3D%220.7%22%20opacity%3D%220.35%22%2F%3E%0A%20%20%20%20%20%20%3C%2Fpattern%3E%0A%20%20%20%20%3C%2Fdefs%3E%0A%0A%20%20%20%20%3C!--%20Background%20Base%20--%3E%0A%20%20%20%20%3Crect%20width%3D%22794%22%20height%3D%221122%22%20fill%3D%22%23faf9f6%22%20%2F%3E%0A%20%20%20%20%3Crect%20width%3D%22794%22%20height%3D%221122%22%20fill%3D%22url(%23guilloche)%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Outer%20Gold%20Border%20--%3E%0A%20%20%20%20%3Crect%20x%3D%2224%22%20y%3D%2224%22%20width%3D%22746%22%20height%3D%221074%22%20fill%3D%22none%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%226%22%20rx%3D%226%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Inner%20Slim%20Border%20--%3E%0A%20%20%20%20%3Crect%20x%3D%2236%22%20y%3D%2236%22%20width%3D%22722%22%20height%3D%221050%22%20fill%3D%22none%22%20stroke%3D%22%23b48328%22%20stroke-width%3D%221.5%22%20%2F%3E%0A%20%20%20%20%3Crect%20x%3D%2242%22%20y%3D%2242%22%20width%3D%22710%22%20height%3D%221038%22%20fill%3D%22none%22%20stroke%3D%22%230f172a%22%20stroke-width%3D%221%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Corner%20Ornaments%20--%3E%0A%20%20%20%20%3C!--%20Top-Left%20--%3E%0A%20%20%20%20%3Cpath%20d%3D%22M%2042%2C75%20L%2075%2C42%20M%2042%2C90%20L%2090%2C42%20M%2042%2C60%20L%2060%2C42%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%222%22%20fill%3D%22none%22%20%2F%3E%0A%20%20%20%20%3Ccircle%20cx%3D%2256%22%20cy%3D%2256%22%20r%3D%224%22%20fill%3D%22%23b48328%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Top-Right%20--%3E%0A%20%20%20%20%3Cpath%20d%3D%22M%20752%2C75%20L%20719%2C42%20M%20752%2C90%20L%20704%2C42%20M%20752%2C60%20L%20734%2C42%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%222%22%20fill%3D%22none%22%20%2F%3E%0A%20%20%20%20%3Ccircle%20cx%3D%22738%22%20cy%3D%2256%22%20r%3D%224%22%20fill%3D%22%23b48328%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Bottom-Left%20--%3E%0A%20%20%20%20%3Cpath%20d%3D%22M%2042%2C1047%20L%2075%2C1080%20M%2042%2C1032%20L%2090%2C1080%20M%2042%2C1062%20L%2060%2C1080%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%222%22%20fill%3D%22none%22%20%2F%3E%0A%20%20%20%20%3Ccircle%20cx%3D%2256%22%20cy%3D%221066%22%20r%3D%224%22%20fill%3D%22%23b48328%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Bottom-Right%20--%3E%0A%20%20%20%20%3Cpath%20d%3D%22M%20752%2C1047%20L%20719%2C1080%20M%20752%2C1032%20L%20704%2C1080%20M%20752%2C1062%20L%20734%2C1080%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%222%22%20fill%3D%22none%22%20%2F%3E%0A%20%20%20%20%3Ccircle%20cx%3D%22738%22%20cy%3D%221066%22%20r%3D%224%22%20fill%3D%22%23b48328%22%20%2F%3E%0A%0A%20%20%20%20%3C!--%20Instansi%20Header%20Decorative%20Ribbon%20%2F%20Emblem%20--%3E%0A%20%20%20%20%3Cg%20transform%3D%22translate(397%2C%2095)%22%3E%0A%20%20%20%20%20%20%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%2232%22%20fill%3D%22%230f172a%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%223%22%20%2F%3E%0A%20%20%20%20%20%20%3Cpath%20d%3D%22M%20-12%2C-8%20L%2012%2C-8%20L%200%2C16%20Z%22%20fill%3D%22%23d4af37%22%20%2F%3E%0A%20%20%20%20%20%20%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%228%22%20fill%3D%22%23faf9f6%22%20%2F%3E%0A%20%20%20%20%20%20%3C!--%20Star%20Ornaments%20--%3E%0A%20%20%20%20%20%20%3Cpolygon%20points%3D%220%2C-18%203%2C-10%2011%2C-10%205%2C-4%207%2C4%200%2C-1%20-7%2C4%20-5%2C-4%20-11%2C-10%20-3%2C-10%22%20fill%3D%22url(%23gold)%22%20transform%3D%22scale(0.8)%20translate(0%2C%20-5)%22%20%2F%3E%0A%20%20%20%20%3C%2Fg%3E%0A%0A%20%20%20%20%3C!--%20Main%20Title%20Typography%20--%3E%0A%20%20%20%20%3Ctext%20x%3D%22397%22%20y%3D%22175%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Cinzel'%2C%20'Times%20New%20Roman'%2C%20serif%22%20font-size%3D%2234%22%20font-weight%3D%22700%22%20letter-spacing%3D%228%22%20fill%3D%22%230f172a%22%3ESERTIFIKAT%20PENGHARGAAN%3C%2Ftext%3E%0A%20%20%20%20%0A%20%20%20%20%3C!--%20Subtitle%20divider%20line%20--%3E%0A%20%20%20%20%3Cg%20transform%3D%22translate(237%2C%20190)%22%3E%0A%20%20%20%20%20%20%3Cline%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%22130%22%20y2%3D%220%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%222%22%20%2F%3E%0A%20%20%20%20%20%20%3Cpolygon%20points%3D%22160%2C-4%20164%2C0%20160%2C4%20156%2C0%22%20fill%3D%22%23b48328%22%20%2F%3E%0A%20%20%20%20%20%20%3Cline%20x1%3D%22190%22%20y1%3D%220%22%20x2%3D%22320%22%20y2%3D%220%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%222%22%20%2F%3E%0A%20%20%20%20%3C%2Fg%3E%0A%0A%20%20%20%20%3Ctext%20x%3D%22397%22%20y%3D%22222%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20sans-serif%22%20font-size%3D%2214%22%20font-weight%3D%22500%22%20letter-spacing%3D%224%22%20fill%3D%22%2364748b%22%3EDIBERIKAN%20DENGAN%20BANGGA%20KEPADA%3C%2Ftext%3E%0A%0A%20%20%20%20%3C!--%20Decorative%20Bottom%20Signatures%20Areas%20--%3E%0A%20%20%20%20%3Cg%20transform%3D%22translate(174.68%2C%201012)%22%3E%0A%20%20%20%20%20%20%3Cline%20x1%3D%22-90%22%20y1%3D%220%22%20x2%3D%2290%22%20y2%3D%220%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%221%22%20%2F%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%220%22%20y%3D%2220%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20sans-serif%22%20font-size%3D%2212%22%20font-weight%3D%22600%22%20fill%3D%22%231e293b%22%3EPimpinan%20Instansi%3C%2Ftext%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%220%22%20y%3D%2234%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20sans-serif%22%20font-size%3D%2210%22%20fill%3D%22%2364748b%22%3EKetua%20Penyelenggara%3C%2Ftext%3E%0A%20%20%20%20%3C%2Fg%3E%0A%0A%20%20%20%20%3C!--%20Golden%20Stamp%20Emblem%20in%20center%20bottom%20--%3E%0A%20%20%20%20%3Cg%20transform%3D%22translate(397%2C%201012)%22%3E%0A%20%20%20%20%20%20%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%2228%22%20fill%3D%22%23f8fafc%22%20stroke%3D%22url(%23gold)%22%20stroke-width%3D%222.5%22%20stroke-dasharray%3D%223%2C2%22%20%2F%3E%0A%20%20%20%20%20%20%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%2222%22%20fill%3D%22none%22%20stroke%3D%22%23d4af37%22%20stroke-width%3D%221%22%20%2F%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%220%22%20y%3D%22-3%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Cinzel'%2C%20serif%22%20font-size%3D%227%22%20font-weight%3D%22700%22%20letter-spacing%3D%221%22%20fill%3D%22%23b48328%22%3ERESMI%3C%2Ftext%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%220%22%20y%3D%227%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Cinzel'%2C%20serif%22%20font-size%3D%226%22%20font-weight%3D%22600%22%20fill%3D%22%230f172a%22%3ETERVERIFIKASI%3C%2Ftext%3E%0A%20%20%20%20%3C%2Fg%3E%0A%0A%20%20%20%20%3Cg%20transform%3D%22translate(619.32%2C%201012)%22%3E%0A%20%20%20%20%20%20%3Cline%20x1%3D%22-90%22%20y1%3D%220%22%20x2%3D%2290%22%20y2%3D%220%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%221%22%20%2F%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%220%22%20y%3D%2220%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20sans-serif%22%20font-size%3D%2212%22%20font-weight%3D%22600%22%20fill%3D%22%231e293b%22%3ESekretaris%20Panitia%3C%2Ftext%3E%0A%20%20%20%20%20%20%3Ctext%20x%3D%220%22%20y%3D%2234%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20sans-serif%22%20font-size%3D%2210%22%20fill%3D%22%2364748b%22%3EKoordinator%20Sertifikasi%3C%2Ftext%3E%0A%20%20%20%20%3C%2Fg%3E%0A%20%20%3C%2Fsvg%3E",
+      "widthMm": 210,
+      "heightMm": 297,
+      "createdAt": "2026-10-04T11:00:00.000Z",
+      "updatedAt": "2026-10-04T11:00:00.000Z",
+      "version": 1
+    }
+  ],
+  "classifications": [
+    {
+      "id": "cls_rln",
+      "code": "RLN",
+      "name": "Relawan",
+      "description": "Penggiat dan relawan masyarakat",
+      "isActive": true
+    },
+    {
+      "id": "cls_plt",
+      "code": "PLT",
+      "name": "Pelatihan",
+      "description": "Peserta bimbingan teknis atau pelatihan",
+      "isActive": true
+    },
+    {
+      "id": "cls_sem",
+      "code": "SEM",
+      "name": "Seminar",
+      "description": "Peserta seminar nasional / webinar",
+      "isActive": true
+    },
+    {
+      "id": "cls_wks",
+      "code": "WKS",
+      "name": "Workshop",
+      "description": "Peserta lokakarya intensif",
+      "isActive": true
+    },
+    {
+      "id": "cls_tot",
+      "code": "TOT",
+      "name": "Training of Trainer",
+      "description": "Instruktur dan pelatih tersertifikasi",
+      "isActive": true
+    },
+    {
+      "id": "cls_apn",
+      "code": "APN",
+      "name": "Apresiasi & Juara",
+      "description": "Penghargaan dedikasi atau pemenang lomba",
+      "isActive": true
+    }
+  ],
+  "issuances": [
+    {
+      "id": "iss_001",
+      "verificationId": "v_bnnk_7a8b9c",
+      "activityId": "act_bnnk_relawan_2026",
+      "activityName": "Pelatihan Relawan Penggiat P4GN 2026",
+      "participantId": "part_001",
+      "participantName": "Ahmad Fauzan Syahputra, S.Sos.",
+      "participantEmail": "ahmad.fauzan@gmail.com",
+      "participantInstitution": "Forum Pemuda Pemerhati Daerah Gorontalo",
+      "registrationNumber": "ST/01/RLN/KA/X/2026/BNNK",
+      "sequenceNumber": 1,
+      "issueDate": "21 Oktober 2026",
+      "issueDateIso": "2026-10-21T07:00:00.000Z",
+      "status": "valid",
+      "templateSnapshotId": "tmpl_royal_gold_landscape",
+      "layoutSnapshot": [
+        {
+          "id": "reg_number",
+          "label": "Nomor Registrasi",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 62,
+          "fontSizePt": 11,
+          "fontFamily": "Inter",
+          "color": "#475569",
+          "textAlign": "center",
+          "fontWeight": "600",
+          "sampleValue": "ST/01/RLN/KA/X/2026/BNNK"
+        },
+        {
+          "id": "participant_name",
+          "label": "Nama Peserta",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 104,
+          "fontSizePt": 26,
+          "fontFamily": "Playfair Display",
+          "color": "#0f172a",
+          "textAlign": "center",
+          "fontWeight": "bold",
+          "textTransform": "uppercase",
+          "maxWidthMm": 240,
+          "sampleValue": "MUHAMMAD RIZKY PRATAMA, S.T."
+        },
+        {
+          "id": "extra_text",
+          "label": "Teks Keterangan / Peran",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 122,
+          "fontSizePt": 12,
+          "fontFamily": "Plus Jakarta Sans",
+          "color": "#334155",
+          "textAlign": "center",
+          "fontWeight": "normal",
+          "maxWidthMm": 230,
+          "sampleValue": "Atas partisipasi aktif dan kontribusi luar biasa sebagai Peserta dalam rangkaian kegiatan"
+        },
+        {
+          "id": "cert_date",
+          "label": "Tanggal Sertifikat",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 144,
+          "fontSizePt": 12,
+          "fontFamily": "Plus Jakarta Sans",
+          "color": "#1e293b",
+          "textAlign": "center",
+          "fontWeight": "600",
+          "sampleValue": "Gorontalo, 21 Oktober 2026"
+        },
+        {
+          "id": "qr_code",
+          "label": "QR Code Verifikasi",
+          "enabled": true,
+          "xMm": 252,
+          "yMm": 156,
+          "fontSizePt": 18,
+          "fontFamily": "Inter",
+          "color": "#0f172a",
+          "textAlign": "center",
+          "fontWeight": "normal"
+        }
+      ],
+      "emailStatus": "delivered",
+      "emailDeliveryId": "msg_resend_987123",
+      "createdAt": "2026-10-21T07:15:00.000Z",
+      "updatedAt": "2026-10-21T07:15:00.000Z"
+    },
+    {
+      "id": "iss_002",
+      "verificationId": "v_bnnk_8b9c0d",
+      "activityId": "act_bnnk_relawan_2026",
+      "activityName": "Pelatihan Relawan Penggiat P4GN 2026",
+      "participantId": "part_002",
+      "participantName": "Siti Nurhaliza Hasan, S.Pd.",
+      "participantEmail": "siti.hasan99@gmail.com",
+      "participantInstitution": "Yayasan Bina Generasi Sejahtera",
+      "registrationNumber": "ST/02/RLN/KA/X/2026/BNNK",
+      "sequenceNumber": 2,
+      "issueDate": "21 Oktober 2026",
+      "issueDateIso": "2026-10-21T07:20:00.000Z",
+      "status": "valid",
+      "templateSnapshotId": "tmpl_royal_gold_landscape",
+      "layoutSnapshot": [
+        {
+          "id": "reg_number",
+          "label": "Nomor Registrasi",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 62,
+          "fontSizePt": 11,
+          "fontFamily": "Inter",
+          "color": "#475569",
+          "textAlign": "center",
+          "fontWeight": "600",
+          "sampleValue": "ST/01/RLN/KA/X/2026/BNNK"
+        },
+        {
+          "id": "participant_name",
+          "label": "Nama Peserta",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 104,
+          "fontSizePt": 26,
+          "fontFamily": "Playfair Display",
+          "color": "#0f172a",
+          "textAlign": "center",
+          "fontWeight": "bold",
+          "textTransform": "uppercase",
+          "maxWidthMm": 240,
+          "sampleValue": "MUHAMMAD RIZKY PRATAMA, S.T."
+        },
+        {
+          "id": "extra_text",
+          "label": "Teks Keterangan / Peran",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 122,
+          "fontSizePt": 12,
+          "fontFamily": "Plus Jakarta Sans",
+          "color": "#334155",
+          "textAlign": "center",
+          "fontWeight": "normal",
+          "maxWidthMm": 230,
+          "sampleValue": "Atas partisipasi aktif dan kontribusi luar biasa sebagai Peserta dalam rangkaian kegiatan"
+        },
+        {
+          "id": "cert_date",
+          "label": "Tanggal Sertifikat",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 144,
+          "fontSizePt": 12,
+          "fontFamily": "Plus Jakarta Sans",
+          "color": "#1e293b",
+          "textAlign": "center",
+          "fontWeight": "600",
+          "sampleValue": "Gorontalo, 21 Oktober 2026"
+        },
+        {
+          "id": "qr_code",
+          "label": "QR Code Verifikasi",
+          "enabled": true,
+          "xMm": 252,
+          "yMm": 156,
+          "fontSizePt": 18,
+          "fontFamily": "Inter",
+          "color": "#0f172a",
+          "textAlign": "center",
+          "fontWeight": "normal"
+        }
+      ],
+      "emailStatus": "delivered",
+      "emailDeliveryId": "msg_resend_987124",
+      "createdAt": "2026-10-21T07:20:00.000Z",
+      "updatedAt": "2026-10-21T07:20:00.000Z"
+    },
+    {
+      "id": "iss_003",
+      "verificationId": "v_kominfo_1c2d3e",
+      "activityId": "act_kominfo_digital_2026",
+      "activityName": "Workshop Transformasi Digital Layanan Publik",
+      "participantId": "part_003",
+      "participantName": "Bambang Triyono, S.Kom.",
+      "participantEmail": "bambang.tri@instansi.go.id",
+      "participantInstitution": "Dinas Komunikasi & Informatika",
+      "registrationNumber": "PG/001/PLT/GO/X/2026/DISKOMINFO",
+      "sequenceNumber": 1,
+      "issueDate": "21 Oktober 2026",
+      "issueDateIso": "2026-10-21T07:25:00.000Z",
+      "status": "valid",
+      "templateSnapshotId": "tmpl_modern_navy_landscape",
+      "layoutSnapshot": [
+        {
+          "id": "reg_number",
+          "label": "Nomor Registrasi",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 62,
+          "fontSizePt": 11,
+          "fontFamily": "Inter",
+          "color": "#475569",
+          "textAlign": "center",
+          "fontWeight": "600",
+          "sampleValue": "ST/01/RLN/KA/X/2026/BNNK"
+        },
+        {
+          "id": "participant_name",
+          "label": "Nama Peserta",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 104,
+          "fontSizePt": 26,
+          "fontFamily": "Playfair Display",
+          "color": "#0f172a",
+          "textAlign": "center",
+          "fontWeight": "bold",
+          "textTransform": "uppercase",
+          "maxWidthMm": 240,
+          "sampleValue": "MUHAMMAD RIZKY PRATAMA, S.T."
+        },
+        {
+          "id": "extra_text",
+          "label": "Teks Keterangan / Peran",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 122,
+          "fontSizePt": 12,
+          "fontFamily": "Plus Jakarta Sans",
+          "color": "#334155",
+          "textAlign": "center",
+          "fontWeight": "normal",
+          "maxWidthMm": 230,
+          "sampleValue": "Atas partisipasi aktif dan kontribusi luar biasa sebagai Peserta dalam rangkaian kegiatan"
+        },
+        {
+          "id": "cert_date",
+          "label": "Tanggal Sertifikat",
+          "enabled": true,
+          "xMm": 148.5,
+          "yMm": 144,
+          "fontSizePt": 12,
+          "fontFamily": "Plus Jakarta Sans",
+          "color": "#1e293b",
+          "textAlign": "center",
+          "fontWeight": "600",
+          "sampleValue": "Gorontalo, 21 Oktober 2026"
+        },
+        {
+          "id": "qr_code",
+          "label": "QR Code Verifikasi",
+          "enabled": true,
+          "xMm": 252,
+          "yMm": 156,
+          "fontSizePt": 18,
+          "fontFamily": "Inter",
+          "color": "#0f172a",
+          "textAlign": "center",
+          "fontWeight": "normal"
+        }
+      ],
+      "emailStatus": "failed",
+      "emailError": "Mailbox quota exceeded / Alamat email penerima menolak koneksi SMTP sementara",
+      "createdAt": "2026-10-21T07:25:00.000Z",
+      "updatedAt": "2026-10-21T07:25:00.000Z"
+    }
+  ],
+  "counters": {
+    "activity_act_bnnk_relawan_2026": {
+      "id": "c1",
+      "scopeKey": "activity_act_bnnk_relawan_2026",
+      "lastNumber": 2,
+      "lastYear": 2026,
+      "lastMonth": 10,
+      "updatedAt": "2026-10-24T07:14:00.360Z"
+    },
+    "activity_act_kominfo_digital_2026": {
+      "id": "c2",
+      "scopeKey": "activity_act_kominfo_digital_2026",
+      "lastNumber": 1,
+      "lastYear": 2026,
+      "lastMonth": 10,
+      "updatedAt": "2026-10-24T07:14:00.360Z"
+    }
+  },
+  "auditLogs": [
+    {
+      "id": "aud_001",
+      "timestamp": "2026-10-10T02:00:00.000Z",
+      "user": "admin@sertifikat.id",
+      "action": "CREATE_ACTIVITY",
+      "targetType": "activity",
+      "targetId": "act_bnnk_relawan_2026",
+      "details": "Membuat kegiatan baru \"Pelatihan Relawan Penggiat P4GN 2026\" dengan format nomor ST/01/RLN/KA/X/2026/BNNK"
+    },
+    {
+      "id": "aud_002",
+      "timestamp": "2026-10-10T02:15:00.000Z",
+      "user": "admin@sertifikat.id",
+      "action": "SAVE_LAYOUT",
+      "targetType": "template",
+      "targetId": "tmpl_royal_gold_landscape",
+      "details": "Menyimpan konfigurasi posisi elemen teks sertifikat: Nama (26pt, y=104mm), Nomor (11pt, y=62mm)"
+    },
+    {
+      "id": "aud_003",
+      "timestamp": "2026-10-21T07:15:00.000Z",
+      "user": "SYSTEM_AUTOMATION",
+      "action": "ISSUE_CERTIFICATE",
+      "targetType": "certificate",
+      "targetId": "iss_001",
+      "details": "Menerbitkan sertifikat otomatis nomor ST/01/RLN/KA/X/2026/BNNK untuk Ahmad Fauzan Syahputra"
+    },
+    {
+      "id": "aud_004",
+      "timestamp": "2026-10-21T07:25:00.000Z",
+      "user": "SYSTEM_AUTOMATION",
+      "action": "EMAIL_FAILED",
+      "targetType": "email",
+      "targetId": "elog_003",
+      "details": "Gagal mengirimkan email ke bambang.tri@instansi.go.id (554 Transaction Failed). Butuh tindakan kirim ulang."
+    }
+  ],
+  "adminUsers": [],
+  "updatedAt": "2026-10-24T07:15:07.787Z",
+  "version": 4
+}

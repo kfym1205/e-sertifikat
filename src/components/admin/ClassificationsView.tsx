@@ -11,6 +11,13 @@ export const ClassificationsView: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    const unsub = storage.subscribe(() => {
+      setClassifications(storage.getClassifications());
+    });
+    return unsub;
+  }, []);
+
   const handleOpenAdd = () => {
     setEditingItem({
       id: `cls_${Date.now()}`,

@@ -37,9 +37,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isPublic = currentView.startsWith('public');
 
-  // Check if header should be shown according to appearance config
-  if (isPublic && !appearance.showOnPublic) return null;
-  if (!isPublic && !appearance.showOnAdmin) return null;
+  // Check if header should be explicitly hidden according to appearance config
+  if (isPublic && appearance?.showOnPublic === false) return null;
+  if (!isPublic && appearance?.showOnAdmin === false) return null;
 
   const headerTitle = appearance.headerTitle || appearance.appName || 'e-Sertifikat BNN';
   const logoSrc = appearance.logoUrl || DEFAULT_BNN_LOGO_SVG;

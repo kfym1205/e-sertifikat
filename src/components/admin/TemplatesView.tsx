@@ -22,6 +22,13 @@ export const TemplatesView: React.FC = () => {
   const [previewTemplate, setPreviewTemplate] = useState<CertificateTemplate | null>(null);
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    const unsub = storage.subscribe(() => {
+      setTemplates(storage.getTemplates());
+    });
+    return unsub;
+  }, []);
+
   // Form state
   const [templateName, setTemplateName] = useState('');
   const [orientation, setOrientation] = useState<PageOrientation>('landscape');

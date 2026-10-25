@@ -60,11 +60,29 @@ app.use((req: Request, res: Response, next) => {
 
 // Middleware to normalize URL paths for Vercel Serverless Function compatibility
 app.use((req: Request, res: Response, next) => {
+  // If running in Vercel and rewritten, x-matched-path or req.url can have various formats
+  const matchedPath = req.headers['x-matched-path'] as string | undefined;
+  if (matchedPath && matchedPath.startsWith('/api') && (req.url === '/api' || req.url === '/api/' || req.url.startsWith('/api/index'))) {
+    req.url = matchedPath;
+    (req as any).originalUrl = matchedPath;
+  }
+
+  // If destination in vercel.json rewrite resulted in /api/index prefix
+  if (req.url.startsWith('/api/index/')) {
+    req.url = req.url.replace('/api/index/', '/api/');
+    (req as any).originalUrl = req.url;
+  }
+
+  // If path was stripped of /api prefix
   if (!req.url.startsWith('/api') && (
     req.url.startsWith('/email') ||
     req.url.startsWith('/admin') ||
     req.url.startsWith('/health') ||
     req.url.startsWith('/appearance') ||
+    req.url.startsWith('/activities') ||
+    req.url.startsWith('/templates') ||
+    req.url.startsWith('/sync') ||
+    req.url.startsWith('/db-status') ||
     req.url.startsWith('/send-email') ||
     req.url.startsWith('/webhook')
   )) {
@@ -134,11 +152,27 @@ app.get('/api/db-status', async (req: Request, res: Response) => {
   }
 });
 
+// Root API Health & Diagnostic Endpoint
+app.get('/api', (req: Request, res: Response) => {
+  res.json({
+    status: 'ok',
+    service: 'e-Sertifikat BNN Centralized API Engine',
+    timestamp: new Date().toISOString(),
+    deliveryStrategy: 'gmail_only',
+  });
+});
+
 // Centralized Sync Endpoint
 app.get('/api/sync', async (req: Request, res: Response) => {
   try {
     const data = await CentralDatabase.getAllData();
-    res.json({ success: true, ...data });
+    const status = CentralDatabase.getStatus();
+    res.json({
+      success: true,
+      ...data,
+      databaseProvider: status.provider,
+      isSupabaseActive: status.isSupabaseActive,
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message });
   }
@@ -146,8 +180,21 @@ app.get('/api/sync', async (req: Request, res: Response) => {
 
 app.post('/api/sync', async (req: Request, res: Response) => {
   try {
-    const result = await CentralDatabase.syncPush(req.body);
-    res.json({ ...result });
+    let body: any = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        body = {};
+      }
+    } else if (!body || typeof body !== 'object') {
+      body = {};
+    }
+    const result = await CentralDatabase.syncPush(body);
+    res.json({
+      message: 'Pengaturan dan data berhasil disinkronkan ke database terpusat.',
+      ...result,
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message });
   }
@@ -184,8 +231,27 @@ app.get('/api/activities', async (req: Request, res: Response) => {
 
 app.post('/api/activities', async (req: Request, res: Response) => {
   try {
-    const saved = await CentralDatabase.saveActivity(req.body);
-    res.json({ success: true, activity: saved });
+    let body: any = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        body = {};
+      }
+    } else if (!body || typeof body !== 'object') {
+      body = {};
+    }
+
+    if (!body.id || !body.name) {
+      return res.status(400).json({ success: false, error: 'ID dan nama kegiatan wajib diisi.' });
+    }
+
+    const saved = await CentralDatabase.saveActivity(body);
+    res.json({
+      success: true,
+      message: 'Konfigurasi kegiatan dan tata letak sertifikat berhasil disimpan di database terpusat.',
+      activity: saved,
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message });
   }
@@ -193,7 +259,10 @@ app.post('/api/activities', async (req: Request, res: Response) => {
 
 app.delete('/api/activities', async (req: Request, res: Response) => {
   try {
-    const id = req.query.id as string;
+    const id = (req.query.id as string) || req.body?.id;
+    if (!id) {
+      return res.status(400).json({ success: false, error: 'ID kegiatan wajib disertakan.' });
+    }
     await CentralDatabase.deleteActivity(id);
     res.json({ success: true, message: 'Kegiatan berhasil dihapus.' });
   } catch (err: any) {
@@ -213,8 +282,27 @@ app.get('/api/templates', async (req: Request, res: Response) => {
 
 app.post('/api/templates', async (req: Request, res: Response) => {
   try {
-    const saved = await CentralDatabase.saveTemplate(req.body);
-    res.json({ success: true, template: saved });
+    let body: any = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        body = {};
+      }
+    } else if (!body || typeof body !== 'object') {
+      body = {};
+    }
+
+    if (!body.id || !body.name || !body.bgImageUrl) {
+      return res.status(400).json({ success: false, error: 'Data template tidak lengkap (ID, nama, dan gambar wajib).' });
+    }
+
+    const saved = await CentralDatabase.saveTemplate(body);
+    res.json({
+      success: true,
+      message: 'Template sertifikat berhasil disimpan secara persisten di database terpusat.',
+      template: saved,
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message });
   }
@@ -222,7 +310,10 @@ app.post('/api/templates', async (req: Request, res: Response) => {
 
 app.delete('/api/templates', async (req: Request, res: Response) => {
   try {
-    const id = req.query.id as string;
+    const id = (req.query.id as string) || req.body?.id;
+    if (!id) {
+      return res.status(400).json({ success: false, error: 'ID template wajib disertakan.' });
+    }
     await CentralDatabase.deleteTemplate(id);
     res.json({ success: true, message: 'Template berhasil dihapus.' });
   } catch (err: any) {

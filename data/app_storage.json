@@ -1,11 +1,69 @@
 {
   "appearance": {
+    "id": "appearance_bnn_default",
     "appName": "e-Sertifikat BNN RI Terpadu",
+    "appSubtitle": "Badan Narkotika Nasional Republik Indonesia",
+    "logoUrl": "data:image/svg+xml;utf8,%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20200%22%20width%3D%22200%22%20height%3D%22200%22%3E%0A%20%20%3Cdefs%3E%0A%20%20%20%20%3ClinearGradient%20id%3D%22bnnBlueGrad%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%2300529B%22%20%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23002b52%22%20%2F%3E%0A%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%20%20%3ClinearGradient%20id%3D%22goldGrad%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23b48328%22%20%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2230%25%22%20stop-color%3D%22%23f5e182%22%20%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2270%25%22%20stop-color%3D%22%23d4af37%22%20%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%238c6114%22%20%2F%3E%0A%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%3C%2Fdefs%3E%0A%0A%20%20%3C!--%20Outer%20Ring%20with%20Gold%20Border%20--%3E%0A%20%20%3Ccircle%20cx%3D%22100%22%20cy%3D%22100%22%20r%3D%2295%22%20fill%3D%22url(%23bnnBlueGrad)%22%20stroke%3D%22url(%23goldGrad)%22%20stroke-width%3D%225%22%20%2F%3E%0A%20%20%3Ccircle%20cx%3D%22100%22%20cy%3D%22100%22%20r%3D%2286%22%20fill%3D%22none%22%20stroke%3D%22%23d4af37%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%223%2C2%22%20%2F%3E%0A%0A%20%20%3C!--%20Inner%20Navy%20Circle%20--%3E%0A%20%20%3Ccircle%20cx%3D%22100%22%20cy%3D%22100%22%20r%3D%2266%22%20fill%3D%22%23003566%22%20stroke%3D%22url(%23goldGrad)%22%20stroke-width%3D%223%22%20%2F%3E%0A%0A%20%20%3C!--%20Central%20Shield%20%2F%20Emblem%20--%3E%0A%20%20%3Cpath%20d%3D%22M%20100%2C52%20L%20134%2C66%20C%20134%2C106%20114%2C136%20100%2C148%20C%2086%2C136%2066%2C106%2066%2C66%20Z%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2300529B%22%20stroke-width%3D%222.5%22%20%2F%3E%0A%20%20%3Cpath%20d%3D%22M%20100%2C58%20L%20128%2C70%20C%20128%2C103%20111%2C130%20100%2C140%20C%2089%2C130%2072%2C103%2072%2C70%20Z%22%20fill%3D%22url(%23bnnBlueGrad)%22%20%2F%3E%0A%0A%20%20%3C!--%20Golden%20Scales%20of%20Justice%20%2F%20BNN%20Motif%20in%20center%20--%3E%0A%20%20%3C!--%20Center%20Column%20--%3E%0A%20%20%3Crect%20x%3D%2298%22%20y%3D%2270%22%20width%3D%224%22%20height%3D%2248%22%20fill%3D%22url(%23goldGrad)%22%20rx%3D%222%22%20%2F%3E%0A%20%20%3C!--%20Balance%20Beam%20--%3E%0A%20%20%3Crect%20x%3D%2280%22%20y%3D%2276%22%20width%3D%2240%22%20height%3D%223%22%20fill%3D%22url(%23goldGrad)%22%20rx%3D%221.5%22%20%2F%3E%0A%20%20%3C!--%20Left%20Pan%20--%3E%0A%20%20%3Cpolygon%20points%3D%2276%2C88%2088%2C88%2082%2C93%22%20fill%3D%22url(%23goldGrad)%22%20%2F%3E%0A%20%20%3Cline%20x1%3D%2282%22%20y1%3D%2278%22%20x2%3D%2282%22%20y2%3D%2288%22%20stroke%3D%22%23d4af37%22%20stroke-width%3D%221%22%20%2F%3E%0A%20%20%3C!--%20Right%20Pan%20--%3E%0A%20%20%3Cpolygon%20points%3D%22112%2C88%20124%2C88%20118%2C93%22%20fill%3D%22url(%23goldGrad)%22%20%2F%3E%0A%20%20%3Cline%20x1%3D%22118%22%20y1%3D%2278%22%20x2%3D%22118%22%20y2%3D%2288%22%20stroke%3D%22%23d4af37%22%20stroke-width%3D%221%22%20%2F%3E%0A%0A%20%20%3C!--%20Golden%205-Point%20Star%20on%20Top%20of%20Shield%20--%3E%0A%20%20%3Cpolygon%20points%3D%22100%2C64%20102%2C69%20107%2C69%20103%2C72%20105%2C77%20100%2C74%2095%2C77%2097%2C72%2093%2C69%2098%2C69%22%20fill%3D%22url(%23goldGrad)%22%20%2F%3E%0A%0A%20%20%3C!--%20Circular%20Text%20Path%3A%20BADAN%20NARKOTIKA%20NASIONAL%20--%3E%0A%20%20%3Cpath%20id%3D%22textPathTop%22%20d%3D%22M%2028%2C100%20A%2072%2C72%200%201%2C1%20172%2C100%22%20fill%3D%22none%22%20%2F%3E%0A%20%20%3Cpath%20id%3D%22textPathBottom%22%20d%3D%22M%20172%2C100%20A%2072%2C72%200%200%2C1%2028%2C100%22%20fill%3D%22none%22%20%2F%3E%0A%0A%20%20%3Ctext%20fill%3D%22%23ffffff%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20Arial%2C%20sans-serif%22%20font-size%3D%229.5%22%20font-weight%3D%22800%22%20letter-spacing%3D%222%22%3E%0A%20%20%20%20%3CtextPath%20href%3D%22%23textPathTop%22%20startOffset%3D%2250%25%22%20text-anchor%3D%22middle%22%3E%0A%20%20%20%20%20%20BADAN%20NARKOTIKA%20NASIONAL%0A%20%20%20%20%3C%2FtextPath%3E%0A%20%20%3C%2Ftext%3E%0A%20%20%3Ctext%20fill%3D%22%23f5e182%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20Arial%2C%20sans-serif%22%20font-size%3D%228.5%22%20font-weight%3D%22700%22%20letter-spacing%3D%223.5%22%3E%0A%20%20%20%20%3CtextPath%20href%3D%22%23textPathBottom%22%20startOffset%3D%2250%25%22%20text-anchor%3D%22middle%22%3E%0A%20%20%20%20%20%20REPUBLIK%20INDONESIA%0A%20%20%20%20%3C%2FtextPath%3E%0A%20%20%3C%2Ftext%3E%0A%0A%20%20%3C!--%20Side%20Stars%20--%3E%0A%20%20%3Ccircle%20cx%3D%2228%22%20cy%3D%22100%22%20r%3D%222.5%22%20fill%3D%22%23d4af37%22%20%2F%3E%0A%20%20%3Ccircle%20cx%3D%22172%22%20cy%3D%22100%22%20r%3D%222.5%22%20fill%3D%22%23d4af37%22%20%2F%3E%0A%3C%2Fsvg%3E%0A",
+    "logoHeightPx": 44,
+    "logoPosition": "left",
+    "headerTitle": "e-Sertifikat BNN",
+    "headerTitleSize": "lg",
+    "headerTitleColor": "#FFFFFF",
+    "headerBgColor": "#003566",
+    "headerStyle": "navy_gradient",
+    "showOnPublic": true,
+    "showOnAdmin": true,
     "footer": {
+      "institutionName": "Badan Narkotika Nasional",
+      "unitName": "BNN Kabupaten Gorontalo",
+      "footerLogoUrl": "data:image/svg+xml;utf8,%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20200%22%20width%3D%22200%22%20height%3D%22200%22%3E%0A%20%20%3Cdefs%3E%0A%20%20%20%20%3ClinearGradient%20id%3D%22bnnBlueGrad%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%2300529B%22%20%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23002b52%22%20%2F%3E%0A%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%20%20%3ClinearGradient%20id%3D%22goldGrad%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23b48328%22%20%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2230%25%22%20stop-color%3D%22%23f5e182%22%20%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2270%25%22%20stop-color%3D%22%23d4af37%22%20%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%238c6114%22%20%2F%3E%0A%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%3C%2Fdefs%3E%0A%0A%20%20%3C!--%20Outer%20Ring%20with%20Gold%20Border%20--%3E%0A%20%20%3Ccircle%20cx%3D%22100%22%20cy%3D%22100%22%20r%3D%2295%22%20fill%3D%22url(%23bnnBlueGrad)%22%20stroke%3D%22url(%23goldGrad)%22%20stroke-width%3D%225%22%20%2F%3E%0A%20%20%3Ccircle%20cx%3D%22100%22%20cy%3D%22100%22%20r%3D%2286%22%20fill%3D%22none%22%20stroke%3D%22%23d4af37%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%223%2C2%22%20%2F%3E%0A%0A%20%20%3C!--%20Inner%20Navy%20Circle%20--%3E%0A%20%20%3Ccircle%20cx%3D%22100%22%20cy%3D%22100%22%20r%3D%2266%22%20fill%3D%22%23003566%22%20stroke%3D%22url(%23goldGrad)%22%20stroke-width%3D%223%22%20%2F%3E%0A%0A%20%20%3C!--%20Central%20Shield%20%2F%20Emblem%20--%3E%0A%20%20%3Cpath%20d%3D%22M%20100%2C52%20L%20134%2C66%20C%20134%2C106%20114%2C136%20100%2C148%20C%2086%2C136%2066%2C106%2066%2C66%20Z%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2300529B%22%20stroke-width%3D%222.5%22%20%2F%3E%0A%20%20%3Cpath%20d%3D%22M%20100%2C58%20L%20128%2C70%20C%20128%2C103%20111%2C130%20100%2C140%20C%2089%2C130%2072%2C103%2072%2C70%20Z%22%20fill%3D%22url(%23bnnBlueGrad)%22%20%2F%3E%0A%0A%20%20%3C!--%20Golden%20Scales%20of%20Justice%20%2F%20BNN%20Motif%20in%20center%20--%3E%0A%20%20%3C!--%20Center%20Column%20--%3E%0A%20%20%3Crect%20x%3D%2298%22%20y%3D%2270%22%20width%3D%224%22%20height%3D%2248%22%20fill%3D%22url(%23goldGrad)%22%20rx%3D%222%22%20%2F%3E%0A%20%20%3C!--%20Balance%20Beam%20--%3E%0A%20%20%3Crect%20x%3D%2280%22%20y%3D%2276%22%20width%3D%2240%22%20height%3D%223%22%20fill%3D%22url(%23goldGrad)%22%20rx%3D%221.5%22%20%2F%3E%0A%20%20%3C!--%20Left%20Pan%20--%3E%0A%20%20%3Cpolygon%20points%3D%2276%2C88%2088%2C88%2082%2C93%22%20fill%3D%22url(%23goldGrad)%22%20%2F%3E%0A%20%20%3Cline%20x1%3D%2282%22%20y1%3D%2278%22%20x2%3D%2282%22%20y2%3D%2288%22%20stroke%3D%22%23d4af37%22%20stroke-width%3D%221%22%20%2F%3E%0A%20%20%3C!--%20Right%20Pan%20--%3E%0A%20%20%3Cpolygon%20points%3D%22112%2C88%20124%2C88%20118%2C93%22%20fill%3D%22url(%23goldGrad)%22%20%2F%3E%0A%20%20%3Cline%20x1%3D%22118%22%20y1%3D%2278%22%20x2%3D%22118%22%20y2%3D%2288%22%20stroke%3D%22%23d4af37%22%20stroke-width%3D%221%22%20%2F%3E%0A%0A%20%20%3C!--%20Golden%205-Point%20Star%20on%20Top%20of%20Shield%20--%3E%0A%20%20%3Cpolygon%20points%3D%22100%2C64%20102%2C69%20107%2C69%20103%2C72%20105%2C77%20100%2C74%2095%2C77%2097%2C72%2093%2C69%2098%2C69%22%20fill%3D%22url(%23goldGrad)%22%20%2F%3E%0A%0A%20%20%3C!--%20Circular%20Text%20Path%3A%20BADAN%20NARKOTIKA%20NASIONAL%20--%3E%0A%20%20%3Cpath%20id%3D%22textPathTop%22%20d%3D%22M%2028%2C100%20A%2072%2C72%200%201%2C1%20172%2C100%22%20fill%3D%22none%22%20%2F%3E%0A%20%20%3Cpath%20id%3D%22textPathBottom%22%20d%3D%22M%20172%2C100%20A%2072%2C72%200%200%2C1%2028%2C100%22%20fill%3D%22none%22%20%2F%3E%0A%0A%20%20%3Ctext%20fill%3D%22%23ffffff%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20Arial%2C%20sans-serif%22%20font-size%3D%229.5%22%20font-weight%3D%22800%22%20letter-spacing%3D%222%22%3E%0A%20%20%20%20%3CtextPath%20href%3D%22%23textPathTop%22%20startOffset%3D%2250%25%22%20text-anchor%3D%22middle%22%3E%0A%20%20%20%20%20%20BADAN%20NARKOTIKA%20NASIONAL%0A%20%20%20%20%3C%2FtextPath%3E%0A%20%20%3C%2Ftext%3E%0A%20%20%3Ctext%20fill%3D%22%23f5e182%22%20font-family%3D%22'Plus%20Jakarta%20Sans'%2C%20Arial%2C%20sans-serif%22%20font-size%3D%228.5%22%20font-weight%3D%22700%22%20letter-spacing%3D%223.5%22%3E%0A%20%20%20%20%3CtextPath%20href%3D%22%23textPathBottom%22%20startOffset%3D%2250%25%22%20text-anchor%3D%22middle%22%3E%0A%20%20%20%20%20%20REPUBLIK%20INDONESIA%0A%20%20%20%20%3C%2FtextPath%3E%0A%20%20%3C%2Ftext%3E%0A%0A%20%20%3C!--%20Side%20Stars%20--%3E%0A%20%20%3Ccircle%20cx%3D%2228%22%20cy%3D%22100%22%20r%3D%222.5%22%20fill%3D%22%23d4af37%22%20%2F%3E%0A%20%20%3Ccircle%20cx%3D%22172%22%20cy%3D%22100%22%20r%3D%222.5%22%20fill%3D%22%23d4af37%22%20%2F%3E%0A%3C%2Fsvg%3E%0A",
+      "showIdentity": true,
+      "address": "Jl. Ahmad A. Wahab No. 125",
+      "village": "Kelurahan Kayubulan",
+      "district": "Kecamatan Limboto",
+      "city": "Kabupaten Gorontalo",
+      "province": "Gorontalo",
+      "postalCode": "96211",
+      "showAddress": true,
+      "phone": "(0435) 881234",
+      "whatsapp": "0812-4567-8910",
+      "email": "bnnkab_gorontalo@bnn.go.id",
+      "website": "https://gorontalokab.bnn.go.id",
+      "serviceHours": "Senin – Jumat: 08.00 – 16.00 WITA",
+      "showContact": true,
+      "description": "Sistem Elektronik Resmi Pelayanan Sertifikasi dan Verifikasi Digital Partisipasi Relawan, Penggiat, dan Peserta Bimbingan Teknis P4GN Badan Narkotika Nasional.",
+      "copyrightText": "Hak Cipta Dilindungi Undang-Undang.",
+      "autoYear": true,
+      "socialFacebook": "https://facebook.com/bnnkabgorontalo",
+      "socialInstagram": "https://instagram.com/bnnk_gorontalo",
+      "socialYoutube": "https://youtube.com/@bnnkgorontalo",
+      "privacyPolicyUrl": "#kebijakan-privasi",
+      "termsUrl": "#syarat-ketentuan",
+      "additionalInfo": "Layanan sertifikasi ini tidak dipungut biaya apapun (Gratis). Keaslian dokumen dapat diverifikasi secara daring melalui pemindaian QR Code.",
+      "showSocial": true,
+      "showLegal": true,
+      "bgColor": "#003566",
+      "textColor": "#E2E8F0",
+      "linkColor": "#93C5FD",
+      "textSize": "sm",
+      "columns": 4,
+      "textAlign": "left",
       "officeAddress": "Jl. MT Haryono No. 11, Cawang, Jakarta Timur",
       "contactPhone": "08123456789"
     },
-    "updatedAt": "2026-10-24T07:14:16.499Z"
+    "theme": {
+      "preset": "bnn_official",
+      "primaryColor": "#00529B",
+      "darkColor": "#003566",
+      "secondaryColor": "#1677C8",
+      "lightColor": "#EAF4FC",
+      "bgColor": "#F5F8FC",
+      "textColor": "#1F2937",
+      "mutedColor": "#64748B",
+      "buttonTextColor": "#FFFFFF"
+    },
+    "updatedAt": "2026-10-26T12:01:20.135Z",
+    "updatedBy": "admin@sertifikat.id"
   },
   "activities": [
     {
@@ -651,6 +709,6 @@
     }
   ],
   "adminUsers": [],
-  "updatedAt": "2026-10-24T07:15:07.787Z",
-  "version": 4
+  "updatedAt": "2026-10-26T12:01:20.135Z",
+  "version": 5
 }

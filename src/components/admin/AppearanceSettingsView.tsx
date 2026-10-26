@@ -40,6 +40,9 @@ export const AppearanceSettingsView: React.FC<AppearanceSettingsViewProps> = ({
   const [fileError, setFileError] = useState('');
 
   React.useEffect(() => {
+    // Refresh with latest shared settings from server on mount
+    storage.syncWithServer().catch(() => {});
+
     const unsub = storage.subscribe(() => {
       setConfig(JSON.parse(JSON.stringify(storage.getAppearance())));
     });

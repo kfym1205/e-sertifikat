@@ -212,8 +212,17 @@ app.get('/api/appearance', async (req: Request, res: Response) => {
 
 app.post('/api/appearance', async (req: Request, res: Response) => {
   try {
-    const saved = await CentralDatabase.saveAppearance(req.body);
-    res.json({ success: true, message: 'Identitas visual e-Sertifikat BNN tersimpan di database.', appearance: saved });
+    const result = await CentralDatabase.saveAppearance(req.body);
+    res.json({
+      success: true,
+      message: result.supabaseSaved
+        ? 'Identitas visual e-Sertifikat BNN berhasil disimpan secara persisten di Supabase Cloud.'
+        : (result.warning || 'Identitas visual e-Sertifikat BNN tersimpan di penyimpanan server.'),
+      appearance: result.appearance,
+      supabaseSaved: result.supabaseSaved,
+      warning: result.warning,
+      error: result.error,
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message });
   }
@@ -246,11 +255,15 @@ app.post('/api/activities', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'ID dan nama kegiatan wajib diisi.' });
     }
 
-    const saved = await CentralDatabase.saveActivity(body);
+    const result = await CentralDatabase.saveActivity(body);
     res.json({
       success: true,
-      message: 'Konfigurasi kegiatan dan tata letak sertifikat berhasil disimpan di database terpusat.',
-      activity: saved,
+      message: result.supabaseSaved
+        ? 'Konfigurasi kegiatan berhasil disimpan di database Supabase Cloud.'
+        : 'Konfigurasi kegiatan berhasil disimpan di penyimpanan terpusat.',
+      activity: result.activity,
+      supabaseSaved: result.supabaseSaved,
+      error: result.error,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message });
@@ -297,11 +310,15 @@ app.post('/api/templates', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Data template tidak lengkap (ID, nama, dan gambar wajib).' });
     }
 
-    const saved = await CentralDatabase.saveTemplate(body);
+    const result = await CentralDatabase.saveTemplate(body);
     res.json({
       success: true,
-      message: 'Template sertifikat berhasil disimpan secara persisten di database terpusat.',
-      template: saved,
+      message: result.supabaseSaved
+        ? 'Template sertifikat berhasil disimpan secara persisten di database Supabase Cloud.'
+        : 'Template sertifikat berhasil disimpan secara persisten di database terpusat.',
+      template: result.template,
+      supabaseSaved: result.supabaseSaved,
+      error: result.error,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message });

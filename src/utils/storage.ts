@@ -232,6 +232,10 @@ class DataStore {
   /**
    * Mengambil sinkronisasi penuh dari database terpusat (Supabase / server persisten)
    */
+  /**
+   * Mengambil sinkronisasi penuh dari database terpusat (Supabase / server persisten)
+   * Server adalah Single Source of Truth bagi perangkat-perangkat klien.
+   */
   async syncWithServer(): Promise<{ success: boolean; provider?: string }> {
     if (this.isSyncing) return { success: true };
     this.isSyncing = true;
@@ -248,65 +252,44 @@ class DataStore {
         return { success: false };
       }
 
-      // Deteksi jika server masih default baseline DAN perangkat ini memiliki kustomisasi lokal lama
-      const hasLocalCustomAppearance = localStorage.getItem(STORAGE_KEYS.APPEARANCE) !== null;
-      const hasLocalCustomTemplates = localStorage.getItem(STORAGE_KEYS.TEMPLATES) !== null;
-      const hasLocalCustomActivities = localStorage.getItem(STORAGE_KEYS.ACTIVITIES) !== null;
-      const isServerBaseline = (!data.activities || data.activities.length <= 2) && (!data.version || data.version <= 1);
-
-      if ((hasLocalCustomAppearance || hasLocalCustomTemplates || hasLocalCustomActivities) && isServerBaseline) {
-        // Lakukan migrasi otomatis dari data lokal ke database terpusat server
-        console.log('[BNN-SYNC] Memigrasikan kustomisasi lokal administrator ke database terpusat...');
-        await fetch('/api/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            appearance: this.appearanceConfig,
-            activities: this.activities,
-            templates: this.templates,
-            classifications: this.classifications,
-            issuances: this.issuances,
-            counters: this.counters,
-          }),
-        });
-      } else {
-        // Ambil data terbaru dari database terpusat
-        if (data.appearance) {
-          this.appearanceConfig = this.mergeAppearance(data.appearance);
-          this.persist(STORAGE_KEYS.APPEARANCE, this.appearanceConfig);
-          this.applyThemeToDom(this.appearanceConfig.theme);
-        }
-        if (Array.isArray(data.activities) && data.activities.length > 0) {
-          this.activities = data.activities;
-          this.persist(STORAGE_KEYS.ACTIVITIES, this.activities);
-        }
-        if (Array.isArray(data.templates) && data.templates.length > 0) {
-          this.templates = data.templates;
-          this.persist(STORAGE_KEYS.TEMPLATES, this.templates);
-        }
-        if (Array.isArray(data.classifications) && data.classifications.length > 0) {
-          this.classifications = data.classifications;
-          this.persist(STORAGE_KEYS.CLASSIFICATIONS, this.classifications);
-        }
-        if (Array.isArray(data.issuances) && data.issuances.length > 0) {
-          this.issuances = data.issuances;
-          this.persist(STORAGE_KEYS.ISSUANCES, this.issuances);
-        }
-        if (data.counters && typeof data.counters === 'object') {
-          this.counters = data.counters;
-          this.persist(STORAGE_KEYS.COUNTERS, this.counters);
-        }
-        if (Array.isArray(data.auditLogs) && data.auditLogs.length > 0) {
-          this.auditLogs = data.auditLogs;
-          this.persist(STORAGE_KEYS.AUDIT_LOGS, this.auditLogs);
-        }
-        if (Array.isArray(data.adminUsers) && data.adminUsers.length > 0) {
-          this.adminUsers = data.adminUsers;
-          this.persist(STORAGE_KEYS.ADMIN_USERS, this.adminUsers);
-        }
+      // Ambil data otoritatif terbaru dari database terpusat (Supabase)
+      if (data.appearance) {
+        this.appearanceConfig = this.mergeAppearance(data.appearance);
+        this.persist(STORAGE_KEYS.APPEARANCE, this.appearanceConfig);
+        this.applyThemeToDom(this.appearanceConfig.theme);
+      }
+      if (Array.isArray(data.activities) && data.activities.length > 0) {
+        this.activities = data.activities;
+        this.persist(STORAGE_KEYS.ACTIVITIES, this.activities);
+      }
+      if (Array.isArray(data.templates) && data.templates.length > 0) {
+        this.templates = data.templates;
+        this.persist(STORAGE_KEYS.TEMPLATES, this.templates);
+      }
+      if (Array.isArray(data.classifications) && data.classifications.length > 0) {
+        this.classifications = data.classifications;
+        this.persist(STORAGE_KEYS.CLASSIFICATIONS, this.classifications);
+      }
+      if (Array.isArray(data.issuances) && data.issuances.length > 0) {
+        this.issuances = data.issuances;
+        this.persist(STORAGE_KEYS.ISSUANCES, this.issuances);
+      }
+      if (data.counters && typeof data.counters === 'object') {
+        this.counters = data.counters;
+        this.persist(STORAGE_KEYS.COUNTERS, this.counters);
+      }
+      if (Array.isArray(data.auditLogs) && data.auditLogs.length > 0) {
+        this.auditLogs = data.auditLogs;
+        this.persist(STORAGE_KEYS.AUDIT_LOGS, this.auditLogs);
+      }
+      if (Array.isArray(data.adminUsers) && data.adminUsers.length > 0) {
+        this.adminUsers = data.adminUsers;
+        this.persist(STORAGE_KEYS.ADMIN_USERS, this.adminUsers);
       }
 
-      this.databaseProvider = data.databaseProvider || (data.isSupabaseActive ? 'supabase_postgresql' : 'persistent_server_storage');
+      this.databaseProvider =
+        data.databaseProvider ||
+        (data.isSupabaseActive ? 'supabase_postgresql' : 'persistent_server_storage');
       this.lastSyncedAt = new Date().toISOString();
       this.isSyncing = false;
       this.notifyListeners();
@@ -340,14 +323,23 @@ class DataStore {
     this.persist(STORAGE_KEYS.APPEARANCE, this.appearanceConfig);
     this.applyThemeToDom(this.appearanceConfig.theme);
 
-    // Sync to backend persistent database
+    // Sync to backend persistent database (Supabase Cloud)
     fetch('/api/appearance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(this.appearanceConfig),
-    }).catch((err) => {
-      console.warn('[BNN-SYNC] Gagal menyimpan tampilan ke server:', err);
-    });
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.supabaseSaved) {
+          console.log('[BNN-SYNC] Identitas visual tersimpan di Supabase Cloud.');
+        } else if (data.warning) {
+          console.warn('[BNN-SYNC]', data.warning);
+        }
+      })
+      .catch((err) => {
+        console.warn('[BNN-SYNC] Gagal menyimpan tampilan ke server:', err);
+      });
 
     this.logAudit(
       'UPDATE_APPEARANCE',

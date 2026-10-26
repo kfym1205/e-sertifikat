@@ -23,39 +23,83 @@ export interface CentralDatabaseData {
   version: number;
 }
 
-// Check for Supabase configuration
-const supabaseUrl =
-  process.env.SUPABASE_URL ||
-  process.env.VITE_SUPABASE_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  '';
+// --------------------------------------------------------------------
+// ENVIRONMENT VARIABLE RESOLUTION (Vercel + Supabase Integration Support)
+// --------------------------------------------------------------------
+export function resolveSupabaseConfig() {
+  const urlSources = [
+    { name: 'SUPABASE_URL', value: process.env.SUPABASE_URL },
+    { name: 'NEXT_PUBLIC_SUPABASE_URL', value: process.env.NEXT_PUBLIC_SUPABASE_URL },
+    { name: 'VITE_SUPABASE_URL', value: process.env.VITE_SUPABASE_URL },
+  ];
+  const urlEntry = urlSources.find(
+    (s) => Boolean(s.value && !s.value.includes('your-project-id'))
+  );
+  const resolvedUrl = (urlEntry?.value || '').trim();
+  const urlSource = urlEntry?.name || 'none';
 
-const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  '';
+  // Prefer Service Role / Secret Key for backend server operations so Row-Level Security (RLS) is bypassed safely
+  const keySources = [
+    { name: 'SUPABASE_SERVICE_ROLE_KEY', value: process.env.SUPABASE_SERVICE_ROLE_KEY },
+    { name: 'SUPABASE_SECRET_KEY', value: process.env.SUPABASE_SECRET_KEY },
+    { name: 'SUPABASE_ANON_KEY', value: process.env.SUPABASE_ANON_KEY },
+    { name: 'SUPABASE_PUBLISHABLE_KEY', value: process.env.SUPABASE_PUBLISHABLE_KEY },
+    { name: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', value: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY },
+    { name: 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', value: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY },
+    { name: 'VITE_SUPABASE_ANON_KEY', value: process.env.VITE_SUPABASE_ANON_KEY },
+    { name: 'VITE_SUPABASE_PUBLISHABLE_KEY', value: process.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+  ];
+  const keyEntry = keySources.find(
+    (s) => Boolean(s.value && !s.value.includes('your-anon-key') && !s.value.includes('...'))
+  );
+  const resolvedKey = (keyEntry?.value || '').trim();
+  const keySource = keyEntry?.name || 'none';
 
-const isSupabaseConfigured =
-  Boolean(supabaseUrl && supabaseKey) &&
-  !supabaseUrl.includes('your-project-id') &&
-  !supabaseKey.includes('your-anon-key');
+  let keyRole: 'service_role' | 'anon' | 'unknown' = 'unknown';
+  if (resolvedKey) {
+    try {
+      const parts = resolvedKey.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+        if (payload.role === 'service_role') keyRole = 'service_role';
+        else if (payload.role === 'anon') keyRole = 'anon';
+      }
+    } catch {}
+  }
 
+  return {
+    url: resolvedUrl,
+    urlSource,
+    key: resolvedKey,
+    keySource,
+    keyRole,
+    isConfigured: Boolean(resolvedUrl && resolvedKey),
+  };
+}
+
+const supabaseConfig = resolveSupabaseConfig();
 let supabaseClient: SupabaseClient | null = null;
-if (isSupabaseConfigured) {
+
+if (supabaseConfig.isConfigured) {
   try {
-    supabaseClient = createClient(supabaseUrl, supabaseKey, {
+    supabaseClient = createClient(supabaseConfig.url, supabaseConfig.key, {
       auth: { persistSession: false },
     });
-    console.log('[BNN-DB] Terhubung ke Supabase Cloud PostgreSQL:', supabaseUrl);
+    console.log(
+      `[BNN-DB] Terhubung ke Supabase Cloud (${supabaseConfig.urlSource}, Key: ${supabaseConfig.keySource} [${supabaseConfig.keyRole}])`
+    );
   } catch (err: any) {
-    console.warn('[BNN-DB] Gagal menginisialisasi client Supabase, menggunakan penyimpanan file persisten:', err?.message);
+    console.warn(
+      '[BNN-DB] Gagal menginisialisasi client Supabase, menggunakan penyimpanan file persisten:',
+      err?.message
+    );
     supabaseClient = null;
   }
 }
 
-// Persistent File Store Location
+// --------------------------------------------------------------------
+// PERSISTENT FILE STORE LOCATION (FALLBACK FOR LOCAL / OFFLINE)
+// --------------------------------------------------------------------
 function getStoreFilePath(): string {
   const localDir = path.resolve(process.cwd(), 'data');
   try {
@@ -64,7 +108,6 @@ function getStoreFilePath(): string {
     }
     return path.join(localDir, 'app_storage.json');
   } catch {
-    // Fallback for restricted / serverless runtime
     const tmpDir = '/tmp';
     return path.join(tmpDir, 'bnn_app_storage.json');
   }
@@ -102,7 +145,6 @@ function getInitialStore(): CentralDatabaseData {
   };
 }
 
-// Global In-Memory Cache backed by File
 let memoryStore: CentralDatabaseData | null = null;
 
 function mergeAppearance(base: any, incoming: any): any {
@@ -150,7 +192,7 @@ function loadFromFile(readOnly = false): CentralDatabaseData {
       }
     }
   } catch (err) {
-    console.warn('[BNN-DB] Kendala saat membaca penyimpanan file, menginisialisasi data awal:', err);
+    console.warn('[BNN-DB] Kendala saat membaca penyimpanan file:', err);
   }
 
   memoryStore = getInitialStore();
@@ -172,6 +214,206 @@ function saveToFile(data: CentralDatabaseData) {
   }
 }
 
+// --------------------------------------------------------------------
+// ENTITY MAPPERS: Supabase snake_case <-> TypeScript camelCase
+// --------------------------------------------------------------------
+export function mapActivityFromDb(row: any): any {
+  if (!row) return row;
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    description: row.description || '',
+    certificateType: row.certificate_type || row.certificateType || 'Sertifikat',
+    templateId: row.template_id || row.templateId || '',
+    startDate: row.start_date || row.startDate || '2026-01-01',
+    endDate: row.end_date || row.endDate || '2026-12-31',
+    isActive: row.is_active !== undefined ? row.is_active : (row.isActive !== false),
+    isArchived: row.is_archived !== undefined ? row.is_archived : Boolean(row.isArchived),
+    duplicatePolicy: row.duplicate_policy || row.duplicatePolicy || 'disallow',
+    dateMode: row.date_mode || row.dateMode || 'server_today',
+    manualDate: row.manual_date || row.manualDate || undefined,
+    timezone: row.timezone || row.timezone || 'Asia/Makassar',
+    layoutElements: row.layout_elements || row.layoutElements || [],
+    registrationNumberConfig: row.registration_number_config || row.registrationNumberConfig || {},
+    formSettings: row.form_settings || row.formSettings || {},
+    emailSettings: row.email_settings || row.emailSettings || {},
+    createdAt: row.created_at || row.createdAt || new Date().toISOString(),
+    updatedAt: row.updated_at || row.updatedAt || new Date().toISOString(),
+  };
+}
+
+export function mapTemplateFromDb(row: any): any {
+  if (!row) return row;
+  return {
+    id: row.id,
+    name: row.name,
+    orientation: row.orientation || 'landscape',
+    bgImageUrl: row.bg_image_url || row.bgImageUrl || '',
+    widthMm: Number(row.width_mm || row.widthMm || 297),
+    heightMm: Number(row.height_mm || row.heightMm || 210),
+    version: Number(row.version || 1),
+    isDefault: row.is_default !== undefined ? row.is_default : Boolean(row.isDefault),
+    createdAt: row.created_at || row.createdAt || new Date().toISOString(),
+    updatedAt: row.updated_at || row.updatedAt || new Date().toISOString(),
+  };
+}
+
+export function mapClassificationFromDb(row: any): any {
+  if (!row) return row;
+  return {
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    description: row.description || '',
+    isActive: row.is_active !== undefined ? row.is_active : (row.isActive !== false),
+    createdAt: row.created_at || row.createdAt || new Date().toISOString(),
+    updatedAt: row.updated_at || row.updatedAt || new Date().toISOString(),
+  };
+}
+
+export function mapIssuanceFromDb(row: any): any {
+  if (!row) return row;
+  return {
+    id: row.id,
+    verificationId: row.verification_id || row.verificationId,
+    activityId: row.activity_id || row.activityId,
+    activityName: row.activity_name || row.activityName,
+    participantId: row.participant_id || row.participantId,
+    participantName: row.participant_name || row.participantName,
+    participantEmail: row.participant_email || row.participantEmail,
+    participantInstitution: row.participant_institution || row.participantInstitution,
+    registrationNumber: row.registration_number || row.registrationNumber,
+    sequenceNumber: Number(row.sequence_number || row.sequenceNumber || 1),
+    issueDate: row.issue_date || row.issueDate,
+    issueDateIso: row.issue_date_iso || row.issueDateIso || new Date().toISOString(),
+    status: row.status || 'valid',
+    pdfStoragePath: row.pdf_storage_path || row.pdfStoragePath,
+    templateSnapshotId: row.template_snapshot_id || row.templateSnapshotId,
+    layoutSnapshot: row.layout_snapshot || row.layoutSnapshot || [],
+    emailStatus: row.email_status || row.emailStatus || 'pending',
+    emailDeliveryId: row.email_delivery_id || row.emailDeliveryId,
+    emailError: row.email_error || row.emailError,
+    reissueReason: row.reissue_reason || row.reissueReason,
+    createdAt: row.created_at || row.createdAt || new Date().toISOString(),
+    updatedAt: row.updated_at || row.updatedAt || new Date().toISOString(),
+  };
+}
+
+export function mapAppearanceFromDb(row: any): any {
+  if (!row) return null;
+  // If stored with full embedded config in footer_config.fullConfig or config column
+  if (row.footer_config && row.footer_config.fullConfig) {
+    return mergeAppearance(DEFAULT_APPEARANCE_CONFIG, row.footer_config.fullConfig);
+  }
+  if (row.config) {
+    return mergeAppearance(DEFAULT_APPEARANCE_CONFIG, row.config);
+  }
+  return mergeAppearance(DEFAULT_APPEARANCE_CONFIG, {
+    id: row.id || 'primary',
+    appName: row.app_name || row.appName,
+    appSubtitle: row.app_subtitle || row.appSubtitle,
+    logoUrl: row.logo_url || row.logoUrl,
+    logoHeightPx: row.logo_height_px || row.logoHeightPx || 44,
+    headerTitle: row.header_title || row.headerTitle,
+    headerStyle: row.header_style || row.headerStyle,
+    theme: {
+      preset: row.theme_preset || 'bnn_official',
+      primaryColor: row.primary_color || '#00529B',
+      darkColor: row.dark_blue_color || '#003566',
+      secondaryColor: row.secondary_color || '#1677C8',
+      lightColor: row.light_blue_color || '#EAF4FC',
+      bgColor: row.bg_color || '#F5F8FC',
+    },
+    footer: row.footer_config || {},
+    updatedAt: row.updated_at || row.updatedAt,
+  });
+}
+
+// --------------------------------------------------------------------
+// SUPABASE APPEARANCE READ/WRITE HELPERS (Supports appearance_configs & appearance_config)
+// --------------------------------------------------------------------
+async function saveAppearanceToSupabase(
+  client: SupabaseClient,
+  config: any
+): Promise<{ saved: boolean; tableName?: string; error?: string }> {
+  const dbRecord = {
+    id: 'primary',
+    app_name: config.appName || 'e-Sertifikat BNN',
+    app_subtitle: config.appSubtitle || '',
+    logo_url: config.logoUrl || '',
+    logo_height_px: Number(config.logoHeightPx) || 44,
+    header_title: config.headerTitle || '',
+    header_style: config.headerStyle || 'navy_gradient',
+    theme_preset: config.theme?.preset || 'bnn_official',
+    primary_color: config.theme?.primaryColor || '#00529B',
+    dark_blue_color: config.theme?.darkColor || '#003566',
+    secondary_color: config.theme?.secondaryColor || '#1677C8',
+    light_blue_color: config.theme?.lightColor || '#EAF4FC',
+    bg_color: config.theme?.bgColor || '#F5F8FC',
+    footer_config: {
+      ...(config.footer || {}),
+      fullConfig: config,
+    },
+    updated_at: config.updatedAt || new Date().toISOString(),
+  };
+
+  // 1. Try appearance_configs (plural, official schema)
+  const { error: err1 } = await client.from('appearance_configs').upsert(dbRecord);
+  if (!err1) {
+    return { saved: true, tableName: 'appearance_configs' };
+  }
+
+  // 2. If table appearance_configs does not exist or fails, try appearance_config (singular)
+  console.warn('[BNN-DB] upsert appearance_configs:', err1.message, '- mencoba tabel appearance_config');
+  const { error: err2 } = await client.from('appearance_config').upsert({
+    id: 'default_appearance',
+    config,
+    updated_at: dbRecord.updated_at,
+  });
+  if (!err2) {
+    return { saved: true, tableName: 'appearance_config' };
+  }
+
+  const { error: err3 } = await client.from('appearance_config').upsert(dbRecord);
+  if (!err3) {
+    return { saved: true, tableName: 'appearance_config' };
+  }
+
+  return { saved: false, error: err1.message || err2.message || err3.message };
+}
+
+async function getAppearanceFromSupabase(
+  client: SupabaseClient
+): Promise<{ appearance: any | null; tableName?: string; error?: string }> {
+  // 1. Try appearance_configs (plural)
+  const { data: rows1, error: err1 } = await client
+    .from('appearance_configs')
+    .select('*')
+    .limit(1);
+
+  if (!err1 && rows1 && rows1.length > 0) {
+    const mapped = mapAppearanceFromDb(rows1[0]);
+    if (mapped) return { appearance: mapped, tableName: 'appearance_configs' };
+  }
+
+  // 2. Try appearance_config (singular)
+  const { data: rows2, error: err2 } = await client
+    .from('appearance_config')
+    .select('*')
+    .limit(1);
+
+  if (!err2 && rows2 && rows2.length > 0) {
+    const mapped = mapAppearanceFromDb(rows2[0]);
+    if (mapped) return { appearance: mapped, tableName: 'appearance_config' };
+  }
+
+  return { appearance: null, error: err1?.message || err2?.message };
+}
+
+// --------------------------------------------------------------------
+// CENTRAL DATABASE CLASS
+// --------------------------------------------------------------------
 export class CentralDatabase {
   static isUsingSupabase(): boolean {
     return Boolean(supabaseClient);
@@ -179,9 +421,9 @@ export class CentralDatabase {
 
   static getStatus() {
     let host: string | undefined;
-    if (isSupabaseConfigured && supabaseUrl) {
+    if (supabaseConfig.url) {
       try {
-        host = new URL(supabaseUrl).host;
+        host = new URL(supabaseConfig.url).host;
       } catch {
         host = 'configured';
       }
@@ -191,62 +433,204 @@ export class CentralDatabase {
     return {
       provider: supabaseClient ? 'supabase_postgresql' : 'persistent_server_storage',
       isSupabaseActive: Boolean(supabaseClient),
-      supabaseConfigured: isSupabaseConfigured,
+      supabaseConfigured: supabaseConfig.isConfigured,
       supabaseHost: host,
       storageFile: getStoreFilePath(),
       updatedAt: store.updatedAt,
       activitiesCount: store.activities.length,
       templatesCount: store.templates.length,
       issuancesCount: store.issuances.length,
+      envVars: {
+        urlConfigured: Boolean(supabaseConfig.url),
+        urlSource: supabaseConfig.urlSource,
+        keyConfigured: Boolean(supabaseConfig.key),
+        keySource: supabaseConfig.keySource,
+        keyRole: supabaseConfig.keyRole,
+      },
       notes: supabaseClient
-        ? 'Database cloud Supabase PostgreSQL aktif sebagai sumber data bersama.'
-        : 'Penyimpanan persisten server aktif (fallback). Untuk menghubungkan Supabase Cloud PostgreSQL, atur SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY di Environment Variables Vercel.',
+        ? `Database cloud Supabase PostgreSQL aktif sebagai sumber data bersama (Role: ${supabaseConfig.keyRole}).`
+        : 'Penyimpanan persisten server aktif (fallback). Untuk menghubungkan Supabase Cloud PostgreSQL, hubungkan Supabase di Vercel atau atur SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY.',
     };
   }
 
   /**
-   * Diagnostik asinkron dengan verifikasi konektivitas nyata tanpa mengubah data produksi
+   * Diagnostik asinkron dengan verifikasi konektivitas nyata & uji baca/tulis non-destruktif
    */
   static async checkStatus() {
+    const baseStatus = this.getStatus();
+    const tableChecks: Record<string, { exists: boolean; recordCount?: number; error?: string }> = {};
+    let readTestResult: { success: boolean; dataSample?: string; error?: string } = { success: false };
+    let writeTestResult: { attempted: boolean; success: boolean; isolatedTestId?: string; error?: string } = {
+      attempted: false,
+      success: false,
+    };
     let connectionHealthy = true;
     let connectionError: string | undefined;
 
     if (supabaseClient) {
+      // 1. Periksa tabel activities
       try {
-        const { error } = await supabaseClient.from('activities').select('id').limit(1);
+        const { count, error } = await supabaseClient.from('activities').select('*', { count: 'exact', head: true });
         if (error) {
+          tableChecks.activities = { exists: false, error: error.message };
           connectionHealthy = false;
           connectionError = error.message;
+        } else {
+          tableChecks.activities = { exists: true, recordCount: count ?? 0 };
         }
-      } catch (err: any) {
-        connectionHealthy = false;
-        connectionError = err?.message || 'Connection failure';
+      } catch (e: any) {
+        tableChecks.activities = { exists: false, error: e?.message };
+      }
+
+      // 2. Periksa tabel certificate_templates
+      try {
+        const { count, error } = await supabaseClient
+          .from('certificate_templates')
+          .select('*', { count: 'exact', head: true });
+        tableChecks.certificate_templates = error
+          ? { exists: false, error: error.message }
+          : { exists: true, recordCount: count ?? 0 };
+      } catch (e: any) {
+        tableChecks.certificate_templates = { exists: false, error: e?.message };
+      }
+
+      // 3. Periksa tabel appearance_configs / appearance_config
+      try {
+        const { count: c1, error: e1 } = await supabaseClient
+          .from('appearance_configs')
+          .select('*', { count: 'exact', head: true });
+        if (!e1) {
+          tableChecks.appearance_configs = { exists: true, recordCount: c1 ?? 0 };
+        } else {
+          const { count: c2, error: e2 } = await supabaseClient
+            .from('appearance_config')
+            .select('*', { count: 'exact', head: true });
+          tableChecks.appearance_configs = e2
+            ? { exists: false, error: `${e1.message} | ${e2.message}` }
+            : { exists: true, recordCount: c2 ?? 0 };
+        }
+      } catch (e: any) {
+        tableChecks.appearance_configs = { exists: false, error: e?.message };
+      }
+
+      // 4. Periksa tabel registration_counters
+      try {
+        const { count, error } = await supabaseClient
+          .from('registration_counters')
+          .select('*', { count: 'exact', head: true });
+        tableChecks.registration_counters = error
+          ? { exists: false, error: error.message }
+          : { exists: true, recordCount: count ?? 0 };
+      } catch (e: any) {
+        tableChecks.registration_counters = { exists: false, error: e?.message };
+      }
+
+      // 5. Uji Baca Pengaturan yang Tersimpan
+      try {
+        const appearanceRes = await getAppearanceFromSupabase(supabaseClient);
+        if (appearanceRes.appearance) {
+          readTestResult = {
+            success: true,
+            dataSample: `appName: "${appearanceRes.appearance.appName}", headerTitle: "${appearanceRes.appearance.headerTitle}" (dari tabel ${appearanceRes.tableName})`,
+          };
+        } else {
+          readTestResult = {
+            success: false,
+            error: appearanceRes.error || 'Record pengaturan belum ada di Supabase',
+          };
+        }
+      } catch (e: any) {
+        readTestResult = { success: false, error: e?.message };
+      }
+
+      // 6. Uji Tulis & Baca Ulang Non-Destruktif (Record Uji Terisolasi: ID _diagnostic_probe_test_)
+      const probeId = `_diag_probe_${Date.now()}`;
+      writeTestResult.attempted = true;
+      writeTestResult.isolatedTestId = probeId;
+      try {
+        // Tulis probe ke appearance_configs (atau appearance_config)
+        const probePayload = {
+          id: probeId,
+          app_name: 'PROBE_TEST',
+          app_subtitle: 'Probe non-destruktif untuk uji tulis Supabase',
+          updated_at: new Date().toISOString(),
+        };
+
+        let probeTable = 'appearance_configs';
+        let { error: writeErr } = await supabaseClient.from('appearance_configs').upsert(probePayload);
+        if (writeErr && writeErr.message.includes('does not exist')) {
+          probeTable = 'appearance_config';
+          const resFallback = await supabaseClient.from('appearance_config').upsert({
+            id: probeId,
+            config: probePayload,
+            updated_at: probePayload.updated_at,
+          });
+          writeErr = resFallback.error;
+        }
+
+        if (writeErr) {
+          writeTestResult.success = false;
+          writeTestResult.error = writeErr.message;
+        } else {
+          // Baca ulang dan pastikan identik
+          const { data: readBack } = await supabaseClient
+            .from(probeTable)
+            .select('*')
+            .eq('id', probeId)
+            .limit(1);
+
+          const isIdentical =
+            readBack &&
+            readBack.length > 0 &&
+            (readBack[0].app_name === 'PROBE_TEST' || readBack[0].config?.app_name === 'PROBE_TEST');
+
+          // Hapus probe segera agar tidak mengotori database
+          await supabaseClient.from(probeTable).delete().eq('id', probeId);
+
+          if (isIdentical) {
+            writeTestResult.success = true;
+          } else {
+            writeTestResult.success = false;
+            writeTestResult.error = 'Hasil baca ulang record probe tidak sesuai data yang dikirim.';
+          }
+        }
+      } catch (e: any) {
+        writeTestResult.success = false;
+        writeTestResult.error = e?.message;
       }
     }
 
-    const baseStatus = this.getStatus();
     return {
       ...baseStatus,
       connectionStatus: supabaseClient
-        ? (connectionHealthy ? 'connected' : 'connection_error')
+        ? connectionHealthy
+          ? 'connected'
+          : 'connection_error'
         : 'fallback_file_storage',
       connectionHealthy,
       connectionError,
+      tableChecks,
+      readTest: readTestResult,
+      writeTest: writeTestResult,
+      rlsBypassActive: supabaseConfig.keyRole === 'service_role',
       notes: supabaseClient
-        ? (connectionHealthy
-            ? 'Database cloud Supabase PostgreSQL aktif dan terhubung normal sebagai sumber data bersama.'
-            : `Kredensial Supabase terkonfigurasi tetapi koneksi gagal: ${connectionError}`)
-        : 'Penyimpanan persisten server aktif (fallback). Untuk menghubungkan Supabase Cloud PostgreSQL, atur SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY di Environment Variables Vercel.',
+        ? connectionHealthy
+          ? `Database Supabase PostgreSQL terhubung normal. Kunci otorisasi: ${supabaseConfig.keySource} (${supabaseConfig.keyRole}). ${
+              supabaseConfig.keyRole !== 'service_role'
+                ? 'PERINGATAN: Kunci anon terdeteksi. Gunakan SUPABASE_SERVICE_ROLE_KEY di Vercel agar operasi tulis backend melewati RLS tanpa hambatan.'
+                : 'Izin operasi backend (RLS bypass) aktif optimal.'
+            }`
+          : `Kredensial Supabase terkonfigurasi tetapi koneksi gagal: ${connectionError}`
+        : 'Penyimpanan persisten server aktif (fallback). Untuk sinkronisasi lintas perangkat yang andal di Vercel, pastikan SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY tersedia.',
     };
   }
 
   /**
-   * Mengambil seluruh data bersama untuk sinkronisasi perangkat klien
+   * Mengambil seluruh data bersama untuk sinkronisasi perangkat klien (Supabase First)
    */
   static async getAllData(): Promise<CentralDatabaseData> {
     const fileData = loadFromFile();
 
-    // If Supabase is active, fetch latest from Supabase tables
     if (supabaseClient) {
       try {
         const [
@@ -255,21 +639,54 @@ export class CentralDatabase {
           { data: classifications },
           { data: issuances },
           { data: auditLogs },
+          appearanceRes,
+          { data: counterRows },
         ] = await Promise.all([
           supabaseClient.from('activities').select('*'),
           supabaseClient.from('certificate_templates').select('*'),
           supabaseClient.from('classification_codes').select('*'),
           supabaseClient.from('certificate_issuances').select('*').limit(500),
           supabaseClient.from('audit_logs').select('*').order('timestamp', { ascending: false }).limit(200),
+          getAppearanceFromSupabase(supabaseClient),
+          supabaseClient.from('registration_counters').select('*'),
         ]);
 
-        if (activities && activities.length > 0) fileData.activities = activities;
-        if (templates && templates.length > 0) fileData.templates = templates;
-        if (classifications && classifications.length > 0) fileData.classifications = classifications;
-        if (issuances && issuances.length > 0) fileData.issuances = issuances;
-        if (auditLogs && auditLogs.length > 0) fileData.auditLogs = auditLogs;
+        if (activities && activities.length > 0) {
+          fileData.activities = activities.map(mapActivityFromDb);
+        }
+        if (templates && templates.length > 0) {
+          fileData.templates = templates.map(mapTemplateFromDb);
+        }
+        if (classifications && classifications.length > 0) {
+          fileData.classifications = classifications.map(mapClassificationFromDb);
+        }
+        if (issuances && issuances.length > 0) {
+          fileData.issuances = issuances.map(mapIssuanceFromDb);
+        }
+        if (auditLogs && auditLogs.length > 0) {
+          fileData.auditLogs = auditLogs;
+        }
+        if (appearanceRes.appearance) {
+          fileData.appearance = appearanceRes.appearance;
+        }
+        if (counterRows && counterRows.length > 0) {
+          const counterMap: Record<string, any> = {};
+          counterRows.forEach((c: any) => {
+            counterMap[c.scope_key] = {
+              id: `counter_${c.scope_key}`,
+              scopeKey: c.scope_key,
+              lastNumber: c.last_number,
+              lastYear: c.last_year,
+              lastMonth: c.last_month,
+              updatedAt: c.updated_at,
+            };
+          });
+          fileData.counters = counterMap;
+        }
+
+        fileData.updatedAt = new Date().toISOString();
       } catch (err) {
-        console.warn('[BNN-DB] Gagal query Supabase, menggunakan data penyimpanan persisten:', err);
+        console.warn('[BNN-DB] Gagal query Supabase di getAllData, menggunakan data penyimpanan persisten:', err);
       }
     }
 
@@ -277,17 +694,36 @@ export class CentralDatabase {
   }
 
   /**
-   * Mengambil konfigurasi identitas visual & tema
+   * Mengambil konfigurasi identitas visual & tema (Supabase First)
    */
   static async getAppearance(): Promise<any> {
+    if (supabaseClient) {
+      try {
+        const res = await getAppearanceFromSupabase(supabaseClient);
+        if (res.appearance) {
+          const store = loadFromFile(true);
+          store.appearance = res.appearance;
+          return res.appearance;
+        }
+      } catch (err) {
+        console.warn('[BNN-DB] Gagal query appearance dari Supabase:', err);
+      }
+    }
+
     const store = loadFromFile();
     return store.appearance || DEFAULT_APPEARANCE_CONFIG;
   }
 
   /**
-   * Menyimpan konfigurasi identitas visual, logo, dan tema
+   * Menyimpan konfigurasi identitas visual, logo, dan tema ke Supabase
    */
-  static async saveAppearance(config: any): Promise<any> {
+  static async saveAppearance(config: any): Promise<{
+    appearance: any;
+    supabaseSaved: boolean;
+    tableName?: string;
+    error?: string;
+    warning?: string;
+  }> {
     const store = loadFromFile();
     store.appearance = mergeAppearance(store.appearance, {
       ...config,
@@ -297,25 +733,42 @@ export class CentralDatabase {
     store.version += 1;
     saveToFile(store);
 
+    let supabaseSaved = false;
+    let tableName: string | undefined;
+    let supabaseError: string | undefined;
+
     if (supabaseClient) {
       try {
-        await supabaseClient.from('appearance_config').upsert({
-          id: 'default_appearance',
-          config: store.appearance,
-          updated_at: store.updatedAt,
-        });
-      } catch (e) {
-        // Table might not exist yet, file storage guarantees persistence
+        const res = await saveAppearanceToSupabase(supabaseClient, store.appearance);
+        supabaseSaved = res.saved;
+        tableName = res.tableName;
+        if (!res.saved) {
+          supabaseError = res.error;
+          console.error('[BNN-DB] Gagal menyimpan tampilan ke Supabase:', res.error);
+        } else {
+          console.log(`[BNN-DB] Berhasil menyimpan tampilan ke Supabase (tabel: ${res.tableName}).`);
+        }
+      } catch (e: any) {
+        supabaseError = e?.message || 'Unknown Supabase error';
+        console.error('[BNN-DB] Exception saat menyimpan tampilan ke Supabase:', e);
       }
     }
 
-    return store.appearance;
+    return {
+      appearance: store.appearance,
+      supabaseSaved,
+      tableName,
+      error: supabaseError,
+      warning: !supabaseClient
+        ? 'Supabase belum terkonfigurasi. Disimpan di penyimpanan server sementara.'
+        : (!supabaseSaved ? `Gagal persist ke Supabase: ${supabaseError}` : undefined),
+    };
   }
 
   /**
    * Menyimpan atau memperbarui kegiatan beserta tata letak sertifikat
    */
-  static async saveActivity(activity: any): Promise<any> {
+  static async saveActivity(activity: any): Promise<{ activity: any; supabaseSaved: boolean; error?: string }> {
     const store = loadFromFile();
     const idx = store.activities.findIndex((a) => a.id === activity.id);
     const updated = {
@@ -333,22 +786,25 @@ export class CentralDatabase {
     store.version += 1;
     saveToFile(store);
 
+    let supabaseSaved = false;
+    let supabaseError: string | undefined;
+
     if (supabaseClient) {
       try {
-        await supabaseClient.from('activities').upsert({
+        const { error } = await supabaseClient.from('activities').upsert({
           id: updated.id,
-          slug: updated.slug,
+          slug: updated.slug || `act-${Date.now()}`,
           name: updated.name,
-          description: updated.description,
+          description: updated.description || '',
           certificate_type: updated.certificateType || 'Sertifikat',
-          template_id: updated.templateId,
-          start_date: updated.startDate,
-          end_date: updated.endDate,
+          template_id: updated.templateId || null,
+          start_date: updated.startDate || '2026-01-01',
+          end_date: updated.endDate || '2026-12-31',
           is_active: updated.isActive !== false,
           is_archived: Boolean(updated.isArchived),
           duplicate_policy: updated.duplicatePolicy || 'disallow',
           date_mode: updated.dateMode || 'server_today',
-          manual_date: updated.manualDate,
+          manual_date: updated.manualDate ? updated.manualDate : null,
           timezone: updated.timezone || 'Asia/Makassar',
           layout_elements: updated.layoutElements || [],
           registration_number_config: updated.registrationNumberConfig || {},
@@ -356,12 +812,20 @@ export class CentralDatabase {
           email_settings: updated.emailSettings || {},
           updated_at: updated.updatedAt,
         });
-      } catch (err) {
-        console.warn('[BNN-DB] Gagal upsert activity ke Supabase:', err);
+
+        if (error) {
+          supabaseError = error.message;
+          console.error('[BNN-DB] Gagal upsert activity ke Supabase:', error.message);
+        } else {
+          supabaseSaved = true;
+        }
+      } catch (err: any) {
+        supabaseError = err?.message;
+        console.error('[BNN-DB] Exception saat upsert activity ke Supabase:', err);
       }
     }
 
-    return updated;
+    return { activity: updated, supabaseSaved, error: supabaseError };
   }
 
   /**
@@ -377,7 +841,9 @@ export class CentralDatabase {
     if (supabaseClient) {
       try {
         await supabaseClient.from('activities').delete().eq('id', id);
-      } catch {}
+      } catch (e: any) {
+        console.warn('[BNN-DB] Gagal menghapus activity dari Supabase:', e?.message);
+      }
     }
 
     return true;
@@ -386,7 +852,7 @@ export class CentralDatabase {
   /**
    * Menyimpan template sertifikat
    */
-  static async saveTemplate(template: any): Promise<any> {
+  static async saveTemplate(template: any): Promise<{ template: any; supabaseSaved: boolean; error?: string }> {
     const store = loadFromFile();
     const idx = store.templates.findIndex((t) => t.id === template.id);
     const updated = {
@@ -405,25 +871,36 @@ export class CentralDatabase {
     store.version += 1;
     saveToFile(store);
 
+    let supabaseSaved = false;
+    let supabaseError: string | undefined;
+
     if (supabaseClient) {
       try {
-        await supabaseClient.from('certificate_templates').upsert({
+        const { error } = await supabaseClient.from('certificate_templates').upsert({
           id: updated.id,
           name: updated.name,
           orientation: updated.orientation || 'landscape',
-          bg_image_url: updated.bgImageUrl,
-          width_mm: updated.widthMm || 297,
-          height_mm: updated.heightMm || 210,
-          version: updated.version,
+          bg_image_url: updated.bgImageUrl || '',
+          width_mm: Number(updated.widthMm || 297),
+          height_mm: Number(updated.heightMm || 210),
+          version: Number(updated.version || 1),
           is_default: Boolean(updated.isDefault),
           updated_at: updated.updatedAt,
         });
-      } catch (err) {
-        console.warn('[BNN-DB] Gagal upsert template ke Supabase:', err);
+
+        if (error) {
+          supabaseError = error.message;
+          console.error('[BNN-DB] Gagal upsert template ke Supabase:', error.message);
+        } else {
+          supabaseSaved = true;
+        }
+      } catch (err: any) {
+        supabaseError = err?.message;
+        console.error('[BNN-DB] Exception saat upsert template ke Supabase:', err);
       }
     }
 
-    return updated;
+    return { template: updated, supabaseSaved, error: supabaseError };
   }
 
   /**
@@ -439,7 +916,9 @@ export class CentralDatabase {
     if (supabaseClient) {
       try {
         await supabaseClient.from('certificate_templates').delete().eq('id', id);
-      } catch {}
+      } catch (e: any) {
+        console.warn('[BNN-DB] Gagal menghapus template dari Supabase:', e?.message);
+      }
     }
 
     return true;
@@ -465,11 +944,13 @@ export class CentralDatabase {
           id: cls.id,
           code: cls.code,
           name: cls.name,
-          description: cls.description,
+          description: cls.description || '',
           is_active: cls.isActive !== false,
           updated_at: new Date().toISOString(),
         });
-      } catch {}
+      } catch (e: any) {
+        console.warn('[BNN-DB] Gagal upsert klasifikasi ke Supabase:', e?.message);
+      }
     }
 
     return cls;
@@ -498,9 +979,9 @@ export class CentralDatabase {
           activity_name: issuance.activityName,
           participant_name: issuance.participantName,
           participant_email: issuance.participantEmail,
-          participant_institution: issuance.participantInstitution,
+          participant_institution: issuance.participantInstitution || '',
           registration_number: issuance.registrationNumber,
-          sequence_number: issuance.sequenceNumber || 1,
+          sequence_number: Number(issuance.sequenceNumber || 1),
           issue_date: issuance.issueDate,
           issue_date_iso: issuance.issueDateIso || new Date().toISOString(),
           status: issuance.status || 'valid',
@@ -511,14 +992,31 @@ export class CentralDatabase {
           email_error: issuance.emailError,
           updated_at: new Date().toISOString(),
         });
-      } catch {}
+
+        // Update counter on Supabase as well
+        if (issuance.activityId && issuance.sequenceNumber) {
+          const scopeKey = `activity_${issuance.activityId}`;
+          const currentCounter = store.counters[scopeKey];
+          if (currentCounter) {
+            await supabaseClient.from('registration_counters').upsert({
+              scope_key: scopeKey,
+              last_number: currentCounter.lastNumber,
+              last_year: currentCounter.lastYear,
+              last_month: currentCounter.lastMonth,
+              updated_at: new Date().toISOString(),
+            });
+          }
+        }
+      } catch (e: any) {
+        console.warn('[BNN-DB] Gagal upsert issuance ke Supabase:', e?.message);
+      }
     }
 
     return issuance;
   }
 
   /**
-   * Migrasi dan sinkronisasi data dari perangkat Administrator ke server terpusat
+   * Migrasi dan sinkronisasi data dari perangkat Administrator ke server terpusat (Supabase Persist)
    */
   static async syncPush(payload: {
     appearance?: any;
@@ -530,63 +1028,99 @@ export class CentralDatabase {
     auditLogs?: any[];
     adminUsers?: any[];
     clientTimestamp?: string;
-  }): Promise<{ success: boolean; updatedAt: string; version: number }> {
+  }): Promise<{ success: boolean; updatedAt: string; version: number; supabaseSaved: boolean }> {
     const store = loadFromFile();
+    let anySupabaseSaved = false;
 
     if (payload.appearance) {
       store.appearance = mergeAppearance(store.appearance, {
         ...payload.appearance,
         updatedAt: new Date().toISOString(),
       });
+      if (supabaseClient) {
+        const res = await saveAppearanceToSupabase(supabaseClient, store.appearance);
+        if (res.saved) anySupabaseSaved = true;
+      }
     }
 
     if (Array.isArray(payload.activities) && payload.activities.length > 0) {
-      // Merge activities by id
-      payload.activities.forEach((act) => {
+      for (const act of payload.activities) {
         const existingIdx = store.activities.findIndex((a) => a.id === act.id);
         if (existingIdx >= 0) {
           store.activities[existingIdx] = { ...store.activities[existingIdx], ...act };
         } else {
           store.activities.unshift(act);
         }
-      });
+        if (supabaseClient) {
+          await this.saveActivity(act);
+          anySupabaseSaved = true;
+        }
+      }
     }
 
     if (Array.isArray(payload.templates) && payload.templates.length > 0) {
-      payload.templates.forEach((tmpl) => {
+      for (const tmpl of payload.templates) {
         const existingIdx = store.templates.findIndex((t) => t.id === tmpl.id);
         if (existingIdx >= 0) {
           store.templates[existingIdx] = { ...store.templates[existingIdx], ...tmpl };
         } else {
           store.templates.unshift(tmpl);
         }
-      });
+        if (supabaseClient) {
+          await this.saveTemplate(tmpl);
+          anySupabaseSaved = true;
+        }
+      }
     }
 
     if (Array.isArray(payload.classifications) && payload.classifications.length > 0) {
-      payload.classifications.forEach((cls) => {
+      for (const cls of payload.classifications) {
         const existingIdx = store.classifications.findIndex((c) => c.id === cls.id);
         if (existingIdx >= 0) {
           store.classifications[existingIdx] = { ...store.classifications[existingIdx], ...cls };
         } else {
           store.classifications.push(cls);
         }
-      });
+        if (supabaseClient) {
+          await this.saveClassification(cls);
+          anySupabaseSaved = true;
+        }
+      }
     }
 
     if (Array.isArray(payload.issuances) && payload.issuances.length > 0) {
-      payload.issuances.forEach((iss) => {
+      for (const iss of payload.issuances) {
         const existingIdx = store.issuances.findIndex((i) => i.id === iss.id);
         if (existingIdx >= 0) {
           store.issuances[existingIdx] = { ...store.issuances[existingIdx], ...iss };
         } else {
           store.issuances.unshift(iss);
         }
-      });
+        if (supabaseClient) {
+          await this.saveIssuance(iss);
+          anySupabaseSaved = true;
+        }
+      }
     }
 
     if (payload.counters && typeof payload.counters === 'object') {
       store.counters = { ...store.counters, ...payload.counters };
+      if (supabaseClient) {
+        try {
+          for (const [key, c] of Object.entries(payload.counters)) {
+            await supabaseClient.from('registration_counters').upsert({
+              scope_key: key,
+              last_number: (c as any).lastNumber || 0,
+              last_year: (c as any).lastYear || 2026,
+              last_month: (c as any).lastMonth || 10,
+              updated_at: new Date().toISOString(),
+            });
+            anySupabaseSaved = true;
+          }
+        } catch (e: any) {
+          console.warn('[BNN-DB] Gagal sync counters ke Supabase:', e?.message);
+        }
+      }
     }
 
     if (Array.isArray(payload.auditLogs) && payload.auditLogs.length > 0) {
@@ -595,17 +1129,23 @@ export class CentralDatabase {
           store.auditLogs.unshift(log);
         }
       });
-    }
-
-    if (Array.isArray(payload.adminUsers) && payload.adminUsers.length > 0) {
-      payload.adminUsers.forEach((usr) => {
-        const existingIdx = store.adminUsers.findIndex((u) => u.id === usr.id);
-        if (existingIdx >= 0) {
-          store.adminUsers[existingIdx] = { ...store.adminUsers[existingIdx], ...usr };
-        } else {
-          store.adminUsers.push(usr);
+      if (supabaseClient) {
+        try {
+          const insertRows = payload.auditLogs.map((l) => ({
+            id: l.id || `aud_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            timestamp: l.timestamp || new Date().toISOString(),
+            user_email: l.user || 'system@bnn.go.id',
+            action: l.action || 'GENERAL_ACTION',
+            target_type: l.targetType || 'system',
+            target_id: l.targetId || 'global',
+            details: l.details || '',
+          }));
+          await supabaseClient.from('audit_logs').upsert(insertRows);
+          anySupabaseSaved = true;
+        } catch (e: any) {
+          console.warn('[BNN-DB] Gagal sync audit logs ke Supabase:', e?.message);
         }
-      });
+      }
     }
 
     store.updatedAt = new Date().toISOString();
@@ -616,6 +1156,7 @@ export class CentralDatabase {
       success: true,
       updatedAt: store.updatedAt,
       version: store.version,
+      supabaseSaved: anySupabaseSaved,
     };
   }
 }

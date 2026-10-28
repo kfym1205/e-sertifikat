@@ -496,11 +496,11 @@ export class CentralDatabase {
     let connectionError: string | undefined;
 
     if (supabaseClient) {
-      // Helper function with 3-second timeout protection
-      const timed = async <T>(task: any, fallback: T): Promise<T> => {
+      // Helper function with per-task timeout protection
+      const timed = async <T>(task: any, fallback: T, ms = 2000): Promise<T> => {
         let t: any;
         const timeoutPromise = new Promise<T>((resolve) => {
-          t = setTimeout(() => resolve(fallback), 3000);
+          t = setTimeout(() => resolve(fallback), ms);
         });
         try {
           return await Promise.race([Promise.resolve(task), timeoutPromise]);
@@ -509,13 +509,13 @@ export class CentralDatabase {
         }
       };
 
-      try {
+      const executeChecks = async () => {
         // Run read checks in PARALLEL with Promise.allSettled to eliminate cold-start latency
         const [actRes, tmplRes, appRes, countRes] = await Promise.allSettled([
-          timed(supabaseClient.from('activities').select('*', { count: 'exact', head: true }), { count: null, error: { message: 'Timeout' } } as any),
-          timed(supabaseClient.from('certificate_templates').select('*', { count: 'exact', head: true }), { count: null, error: { message: 'Timeout' } } as any),
-          timed(supabaseClient.from('appearance_configs').select('*', { count: 'exact', head: true }), { count: null, error: { message: 'Timeout' } } as any),
-          timed(supabaseClient.from('registration_counters').select('*', { count: 'exact', head: true }), { count: null, error: { message: 'Timeout' } } as any),
+          timed(supabaseClient.from('activities').select('*', { count: 'exact', head: true }), { count: null, error: { message: 'Timeout (2s)' } } as any, 2000),
+          timed(supabaseClient.from('certificate_templates').select('*', { count: 'exact', head: true }), { count: null, error: { message: 'Timeout (2s)' } } as any, 2000),
+          timed(supabaseClient.from('appearance_configs').select('*', { count: 'exact', head: true }), { count: null, error: { message: 'Timeout (2s)' } } as any, 2000),
+          timed(supabaseClient.from('registration_counters').select('*', { count: 'exact', head: true }), { count: null, error: { message: 'Timeout (2s)' } } as any, 2000),
         ]);
 
         if (actRes.status === 'fulfilled' && !actRes.value.error) {
@@ -536,10 +536,14 @@ export class CentralDatabase {
 
         if (appRes.status === 'fulfilled' && !appRes.value.error) {
           tableChecks.appearance_configs = { exists: true, recordCount: appRes.value.count ?? 0 };
-        } else {
-          // Fallback check appearance_config (singular)
+        } else if (connectionHealthy) {
+          // Fallback check appearance_config (singular) ONLY if connection is reachable
           try {
-            const fallbackApp = await timed(supabaseClient.from('appearance_config').select('*', { count: 'exact', head: true }), { count: null, error: { message: 'Timeout' } } as any);
+            const fallbackApp = await timed(
+              supabaseClient.from('appearance_config').select('*', { count: 'exact', head: true }),
+              { count: null, error: { message: 'Timeout' } } as any,
+              1500
+            );
             if (!fallbackApp.error) {
               tableChecks.appearance_configs = { exists: true, recordCount: fallbackApp.count ?? 0 };
             } else {
@@ -548,6 +552,8 @@ export class CentralDatabase {
           } catch (e: any) {
             tableChecks.appearance_configs = { exists: false, error: e?.message };
           }
+        } else {
+          tableChecks.appearance_configs = { exists: false, error: connectionError };
         }
 
         if (countRes.status === 'fulfilled' && !countRes.value.error) {
@@ -557,25 +563,33 @@ export class CentralDatabase {
           tableChecks.registration_counters = { exists: false, error: errMsg };
         }
 
-        // Test read appearance with timeout
-        const appearanceRes = await timed<{ appearance: any; tableName?: string; error?: string }>(
-          getAppearanceFromSupabase(supabaseClient),
-          { appearance: null, error: 'Read timeout' }
-        );
-        if (appearanceRes.appearance) {
-          readTestResult = {
-            success: true,
-            dataSample: `appName: "${appearanceRes.appearance.appName}", headerTitle: "${appearanceRes.appearance.headerTitle}" (dari tabel ${appearanceRes.tableName || 'appearance_configs'})`,
-          };
+        // Test read appearance with timeout ONLY if connection is healthy
+        if (connectionHealthy) {
+          const appearanceRes = await timed<{ appearance: any; tableName?: string; error?: string }>(
+            getAppearanceFromSupabase(supabaseClient),
+            { appearance: null, error: 'Read timeout' },
+            1500
+          );
+          if (appearanceRes.appearance) {
+            readTestResult = {
+              success: true,
+              dataSample: `appName: "${appearanceRes.appearance.appName}", headerTitle: "${appearanceRes.appearance.headerTitle}" (dari tabel ${appearanceRes.tableName || 'appearance_configs'})`,
+            };
+          } else {
+            readTestResult = {
+              success: false,
+              error: appearanceRes.error || 'Record pengaturan belum ada di Supabase',
+            };
+          }
         } else {
           readTestResult = {
             success: false,
-            error: appearanceRes.error || 'Record pengaturan belum ada di Supabase',
+            error: connectionError || 'Koneksi database tidak tersedia untuk uji baca',
           };
         }
 
-        // Only run isolated write probe if explicitly requested
-        if (runWriteProbe) {
+        // Only run isolated write probe if explicitly requested AND connection is healthy
+        if (runWriteProbe && connectionHealthy) {
           const probeId = `_diag_probe_${Date.now()}`;
           writeTestResult.attempted = true;
           writeTestResult.isolatedTestId = probeId;
@@ -613,6 +627,14 @@ export class CentralDatabase {
             writeTestResult.note = 'Uji tulis dan baca ulang terisolasi berhasil diverifikasi.';
           }
         }
+      };
+
+      try {
+        let masterTimer: any;
+        const masterTimeoutPromise = new Promise<void>((resolve) => {
+          masterTimer = setTimeout(resolve, 3500);
+        });
+        await Promise.race([executeChecks(), masterTimeoutPromise]).finally(() => clearTimeout(masterTimer));
       } catch (err: any) {
         connectionHealthy = false;
         connectionError = err?.message || 'Supabase diagnostic query failure';
@@ -621,6 +643,8 @@ export class CentralDatabase {
 
     return {
       ...baseStatus,
+      configurationStatus: supabaseConfig.isConfigured ? 'configured' : 'not_configured',
+      clientInitialization: supabaseClient ? 'initialized' : (supabaseConfig.isConfigured ? 'failed' : 'skipped'),
       connectionStatus: supabaseClient
         ? connectionHealthy
           ? 'connected'

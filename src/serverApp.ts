@@ -164,8 +164,16 @@ app.get(['/api/db-status', '/api/index/db-status'], async (req: Request, res: Re
   try {
     const runWriteProbe = req.query.probe === 'write';
     const diagnostic = await CentralDatabase.checkStatus(runWriteProbe);
+
+    let statusText: 'ok' | 'degraded' | 'unconfigured_fallback' = 'ok';
+    if (!diagnostic.supabaseConfigured) {
+      statusText = 'unconfigured_fallback';
+    } else if (!diagnostic.connectionHealthy) {
+      statusText = 'degraded';
+    }
+
     res.json({
-      status: 'ok',
+      status: statusText,
       service: 'e-Sertifikat BNN Storage Diagnostics',
       timestamp: new Date().toISOString(),
       ...diagnostic,

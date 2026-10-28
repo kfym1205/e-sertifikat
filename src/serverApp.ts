@@ -58,8 +58,30 @@ app.use((req: Request, res: Response, next) => {
   next();
 });
 
+// Safety: prevent unhandled promise rejections from crashing the serverless container
+if (!(process as any)._bnnErrorListenersInstalled) {
+  (process as any)._bnnErrorListenersInstalled = true;
+  process.on('unhandledRejection', (reason: any) => {
+    console.error('[UNHANDLED_REJECTION_CAUGHT]', reason?.message || String(reason));
+  });
+  process.on('uncaughtException', (err: any) => {
+    console.error('[UNCAUGHT_EXCEPTION_CAUGHT]', err?.message || String(err));
+  });
+}
+
 // Middleware to normalize URL paths for Vercel Serverless Function compatibility
 app.use((req: Request, res: Response, next) => {
+  // If destination in vercel.json rewrite passed __route (e.g. ?__route=db-status)
+  if (req.query && typeof req.query.__route === 'string' && req.query.__route) {
+    const subRoute = req.query.__route.replace(/^\/+/, '');
+    const searchParams = new URLSearchParams(req.query as any);
+    searchParams.delete('__route');
+    const remainingQuery = searchParams.toString();
+    const normalizedUrl = `/api/${subRoute}${remainingQuery ? `?${remainingQuery}` : ''}`;
+    req.url = normalizedUrl;
+    (req as any).originalUrl = normalizedUrl;
+  }
+
   // If running in Vercel and rewritten, x-matched-path or req.url can have various formats
   const matchedPath = req.headers['x-matched-path'] as string | undefined;
   if (matchedPath && matchedPath.startsWith('/api') && (req.url === '/api' || req.url === '/api/' || req.url.startsWith('/api/index'))) {
@@ -70,6 +92,12 @@ app.use((req: Request, res: Response, next) => {
   // If destination in vercel.json rewrite resulted in /api/index prefix
   if (req.url.startsWith('/api/index/')) {
     req.url = req.url.replace('/api/index/', '/api/');
+    (req as any).originalUrl = req.url;
+  } else if (req.url === '/api/index' || req.url === '/api/index/') {
+    req.url = '/api';
+    (req as any).originalUrl = '/api';
+  } else if (req.url.startsWith('/api/index?')) {
+    req.url = req.url.replace('/api/index?', '/api?');
     (req as any).originalUrl = req.url;
   }
 
@@ -132,9 +160,10 @@ app.get('/api/health', (req: Request, res: Response) => {
 import { CentralDatabase } from './server/database';
 
 // Database Status
-app.get('/api/db-status', async (req: Request, res: Response) => {
+app.get(['/api/db-status', '/api/index/db-status'], async (req: Request, res: Response) => {
   try {
-    const diagnostic = await CentralDatabase.checkStatus();
+    const runWriteProbe = req.query.probe === 'write';
+    const diagnostic = await CentralDatabase.checkStatus(runWriteProbe);
     res.json({
       status: 'ok',
       service: 'e-Sertifikat BNN Storage Diagnostics',
@@ -153,7 +182,7 @@ app.get('/api/db-status', async (req: Request, res: Response) => {
 });
 
 // Root API Health & Diagnostic Endpoint
-app.get('/api', (req: Request, res: Response) => {
+app.get(['/api', '/api/', '/api/index'], (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     service: 'e-Sertifikat BNN Centralized API Engine',
@@ -1227,8 +1256,19 @@ app.post('/api/send-email', async (req: Request, res: Response) => {
   return res.redirect(307, '/api/email/send');
 });
 
-// Global Express error handler
+// Catch-all 404 handler for all unmatched API routes
+app.all(['/api', '/api/*'], (req: Request, res: Response) => {
+  res.status(404).json({
+    success: false,
+    error: `Endpoint API "${req.method} ${req.originalUrl || req.url}" tidak ditemukan di server.`,
+  });
+});
+
+// Global Express error handler (strictly the final middleware with 4 arguments)
 app.use((err: any, req: Request, res: Response, next: any) => {
+  if (res.headersSent) {
+    return next(err);
+  }
   safeLog('EXPRESS_GLOBAL_ERROR', {
     method: req.method,
     url: req.url,
@@ -1242,14 +1282,6 @@ app.use((err: any, req: Request, res: Response, next: any) => {
     success: false,
     error: err?.message || 'Terjadi kesalahan pemrosesan pada server backend.',
     code: err?.code || 'SERVER_ERROR',
-  });
-});
-
-// Catch-all 404 handler for API routes
-app.all('/api/*', (req: Request, res: Response) => {
-  res.status(404).json({
-    success: false,
-    error: `Endpoint API "${req.method} ${req.originalUrl || req.url}" tidak ditemukan di server.`,
   });
 });
 

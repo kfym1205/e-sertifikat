@@ -1,7 +1,7 @@
 import app from './src/serverApp';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import type { Request, Response } from 'express';
+import express, { type Request, type Response } from 'express';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,7 +17,7 @@ async function startLocalServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(path.resolve(__dirname, 'dist'));
+    app.use(express.static(path.resolve(__dirname, 'dist')));
     app.get('*', (req: Request, res: Response) => {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });

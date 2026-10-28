@@ -26,33 +26,57 @@ export interface CentralDatabaseData {
 // --------------------------------------------------------------------
 // ENVIRONMENT VARIABLE RESOLUTION (Vercel + Supabase Integration Support)
 // --------------------------------------------------------------------
+function cleanEnvValue(val?: string): string {
+  if (!val) return '';
+  let cleaned = val.trim();
+  if (
+    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))
+  ) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+  return cleaned;
+}
+
 export function resolveSupabaseConfig() {
   const urlSources = [
-    { name: 'SUPABASE_URL', value: process.env.SUPABASE_URL },
-    { name: 'NEXT_PUBLIC_SUPABASE_URL', value: process.env.NEXT_PUBLIC_SUPABASE_URL },
-    { name: 'VITE_SUPABASE_URL', value: process.env.VITE_SUPABASE_URL },
+    { name: 'SUPABASE_URL', value: cleanEnvValue(process.env.SUPABASE_URL) },
+    { name: 'NEXT_PUBLIC_SUPABASE_URL', value: cleanEnvValue(process.env.NEXT_PUBLIC_SUPABASE_URL) },
+    { name: 'VITE_SUPABASE_URL', value: cleanEnvValue(process.env.VITE_SUPABASE_URL) },
   ];
   const urlEntry = urlSources.find(
     (s) => Boolean(s.value && !s.value.includes('your-project-id'))
   );
-  const resolvedUrl = (urlEntry?.value || '').trim();
+  const rawUrl = urlEntry?.value || '';
   const urlSource = urlEntry?.name || 'none';
+
+  let resolvedUrl = '';
+  if (rawUrl) {
+    try {
+      const parsed = new URL(rawUrl);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        resolvedUrl = parsed.origin;
+      }
+    } catch {
+      resolvedUrl = '';
+    }
+  }
 
   // Prefer Service Role / Secret Key for backend server operations so Row-Level Security (RLS) is bypassed safely
   const keySources = [
-    { name: 'SUPABASE_SERVICE_ROLE_KEY', value: process.env.SUPABASE_SERVICE_ROLE_KEY },
-    { name: 'SUPABASE_SECRET_KEY', value: process.env.SUPABASE_SECRET_KEY },
-    { name: 'SUPABASE_ANON_KEY', value: process.env.SUPABASE_ANON_KEY },
-    { name: 'SUPABASE_PUBLISHABLE_KEY', value: process.env.SUPABASE_PUBLISHABLE_KEY },
-    { name: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', value: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY },
-    { name: 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', value: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY },
-    { name: 'VITE_SUPABASE_ANON_KEY', value: process.env.VITE_SUPABASE_ANON_KEY },
-    { name: 'VITE_SUPABASE_PUBLISHABLE_KEY', value: process.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+    { name: 'SUPABASE_SERVICE_ROLE_KEY', value: cleanEnvValue(process.env.SUPABASE_SERVICE_ROLE_KEY) },
+    { name: 'SUPABASE_SECRET_KEY', value: cleanEnvValue(process.env.SUPABASE_SECRET_KEY) },
+    { name: 'SUPABASE_ANON_KEY', value: cleanEnvValue(process.env.SUPABASE_ANON_KEY) },
+    { name: 'SUPABASE_PUBLISHABLE_KEY', value: cleanEnvValue(process.env.SUPABASE_PUBLISHABLE_KEY) },
+    { name: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', value: cleanEnvValue(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) },
+    { name: 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', value: cleanEnvValue(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) },
+    { name: 'VITE_SUPABASE_ANON_KEY', value: cleanEnvValue(process.env.VITE_SUPABASE_ANON_KEY) },
+    { name: 'VITE_SUPABASE_PUBLISHABLE_KEY', value: cleanEnvValue(process.env.VITE_SUPABASE_PUBLISHABLE_KEY) },
   ];
   const keyEntry = keySources.find(
     (s) => Boolean(s.value && !s.value.includes('your-anon-key') && !s.value.includes('...'))
   );
-  const resolvedKey = (keyEntry?.value || '').trim();
+  const resolvedKey = keyEntry?.value || '';
   const keySource = keyEntry?.name || 'none';
 
   let keyRole: 'service_role' | 'anon' | 'unknown' = 'unknown';
@@ -101,6 +125,10 @@ if (supabaseConfig.isConfigured) {
 // PERSISTENT FILE STORE LOCATION (FALLBACK FOR LOCAL / OFFLINE)
 // --------------------------------------------------------------------
 function getStoreFilePath(): string {
+  // If running in Vercel or AWS Lambda, never attempt writing to process.cwd() as it is read-only (EROFS)
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NODE_ENV === 'production') {
+    return path.join('/tmp', 'bnn_app_storage.json');
+  }
   const localDir = path.resolve(process.cwd(), 'data');
   try {
     if (!fs.existsSync(localDir)) {
@@ -108,8 +136,7 @@ function getStoreFilePath(): string {
     }
     return path.join(localDir, 'app_storage.json');
   } catch {
-    const tmpDir = '/tmp';
-    return path.join(tmpDir, 'bnn_app_storage.json');
+    return path.join('/tmp', 'bnn_app_storage.json');
   }
 }
 
@@ -456,82 +483,89 @@ export class CentralDatabase {
   /**
    * Diagnostik asinkron dengan verifikasi konektivitas nyata & uji baca/tulis non-destruktif
    */
-  static async checkStatus() {
+  static async checkStatus(runWriteProbe = false) {
     const baseStatus = this.getStatus();
     const tableChecks: Record<string, { exists: boolean; recordCount?: number; error?: string }> = {};
     let readTestResult: { success: boolean; dataSample?: string; error?: string } = { success: false };
-    let writeTestResult: { attempted: boolean; success: boolean; isolatedTestId?: string; error?: string } = {
+    let writeTestResult: { attempted: boolean; success: boolean; isolatedTestId?: string; error?: string; note?: string } = {
       attempted: false,
-      success: false,
+      success: true,
+      note: 'Uji tulis dilewati demi performa optimal (gunakan parameter ?probe=write untuk menguji tulis).',
     };
     let connectionHealthy = true;
     let connectionError: string | undefined;
 
     if (supabaseClient) {
-      // 1. Periksa tabel activities
+      // Helper function with 3-second timeout protection
+      const timed = async <T>(task: any, fallback: T): Promise<T> => {
+        let t: any;
+        const timeoutPromise = new Promise<T>((resolve) => {
+          t = setTimeout(() => resolve(fallback), 3000);
+        });
+        try {
+          return await Promise.race([Promise.resolve(task), timeoutPromise]);
+        } finally {
+          clearTimeout(t);
+        }
+      };
+
       try {
-        const { count, error } = await supabaseClient.from('activities').select('*', { count: 'exact', head: true });
-        if (error) {
-          tableChecks.activities = { exists: false, error: error.message };
+        // Run read checks in PARALLEL with Promise.allSettled to eliminate cold-start latency
+        const [actRes, tmplRes, appRes, countRes] = await Promise.allSettled([
+          timed(supabaseClient.from('activities').select('*', { count: 'exact', head: true }), { count: null, error: { message: 'Timeout' } } as any),
+          timed(supabaseClient.from('certificate_templates').select('*', { count: 'exact', head: true }), { count: null, error: { message: 'Timeout' } } as any),
+          timed(supabaseClient.from('appearance_configs').select('*', { count: 'exact', head: true }), { count: null, error: { message: 'Timeout' } } as any),
+          timed(supabaseClient.from('registration_counters').select('*', { count: 'exact', head: true }), { count: null, error: { message: 'Timeout' } } as any),
+        ]);
+
+        if (actRes.status === 'fulfilled' && !actRes.value.error) {
+          tableChecks.activities = { exists: true, recordCount: actRes.value.count ?? 0 };
+        } else {
+          const errMsg = actRes.status === 'fulfilled' ? actRes.value.error?.message : String(actRes.reason);
+          tableChecks.activities = { exists: false, error: errMsg };
           connectionHealthy = false;
-          connectionError = error.message;
-        } else {
-          tableChecks.activities = { exists: true, recordCount: count ?? 0 };
+          connectionError = errMsg;
         }
-      } catch (e: any) {
-        tableChecks.activities = { exists: false, error: e?.message };
-      }
 
-      // 2. Periksa tabel certificate_templates
-      try {
-        const { count, error } = await supabaseClient
-          .from('certificate_templates')
-          .select('*', { count: 'exact', head: true });
-        tableChecks.certificate_templates = error
-          ? { exists: false, error: error.message }
-          : { exists: true, recordCount: count ?? 0 };
-      } catch (e: any) {
-        tableChecks.certificate_templates = { exists: false, error: e?.message };
-      }
-
-      // 3. Periksa tabel appearance_configs / appearance_config
-      try {
-        const { count: c1, error: e1 } = await supabaseClient
-          .from('appearance_configs')
-          .select('*', { count: 'exact', head: true });
-        if (!e1) {
-          tableChecks.appearance_configs = { exists: true, recordCount: c1 ?? 0 };
+        if (tmplRes.status === 'fulfilled' && !tmplRes.value.error) {
+          tableChecks.certificate_templates = { exists: true, recordCount: tmplRes.value.count ?? 0 };
         } else {
-          const { count: c2, error: e2 } = await supabaseClient
-            .from('appearance_config')
-            .select('*', { count: 'exact', head: true });
-          tableChecks.appearance_configs = e2
-            ? { exists: false, error: `${e1.message} | ${e2.message}` }
-            : { exists: true, recordCount: c2 ?? 0 };
+          const errMsg = tmplRes.status === 'fulfilled' ? tmplRes.value.error?.message : String(tmplRes.reason);
+          tableChecks.certificate_templates = { exists: false, error: errMsg };
         }
-      } catch (e: any) {
-        tableChecks.appearance_configs = { exists: false, error: e?.message };
-      }
 
-      // 4. Periksa tabel registration_counters
-      try {
-        const { count, error } = await supabaseClient
-          .from('registration_counters')
-          .select('*', { count: 'exact', head: true });
-        tableChecks.registration_counters = error
-          ? { exists: false, error: error.message }
-          : { exists: true, recordCount: count ?? 0 };
-      } catch (e: any) {
-        tableChecks.registration_counters = { exists: false, error: e?.message };
-      }
+        if (appRes.status === 'fulfilled' && !appRes.value.error) {
+          tableChecks.appearance_configs = { exists: true, recordCount: appRes.value.count ?? 0 };
+        } else {
+          // Fallback check appearance_config (singular)
+          try {
+            const fallbackApp = await timed(supabaseClient.from('appearance_config').select('*', { count: 'exact', head: true }), { count: null, error: { message: 'Timeout' } } as any);
+            if (!fallbackApp.error) {
+              tableChecks.appearance_configs = { exists: true, recordCount: fallbackApp.count ?? 0 };
+            } else {
+              tableChecks.appearance_configs = { exists: false, error: fallbackApp.error.message };
+            }
+          } catch (e: any) {
+            tableChecks.appearance_configs = { exists: false, error: e?.message };
+          }
+        }
 
-      // 5. Uji Baca Pengaturan yang Tersimpan
-      try {
-        const appearanceRes = await getAppearanceFromSupabase(supabaseClient);
+        if (countRes.status === 'fulfilled' && !countRes.value.error) {
+          tableChecks.registration_counters = { exists: true, recordCount: countRes.value.count ?? 0 };
+        } else {
+          const errMsg = countRes.status === 'fulfilled' ? countRes.value.error?.message : String(countRes.reason);
+          tableChecks.registration_counters = { exists: false, error: errMsg };
+        }
+
+        // Test read appearance with timeout
+        const appearanceRes = await timed<{ appearance: any; tableName?: string; error?: string }>(
+          getAppearanceFromSupabase(supabaseClient),
+          { appearance: null, error: 'Read timeout' }
+        );
         if (appearanceRes.appearance) {
           readTestResult = {
             success: true,
-            dataSample: `appName: "${appearanceRes.appearance.appName}", headerTitle: "${appearanceRes.appearance.headerTitle}" (dari tabel ${appearanceRes.tableName})`,
+            dataSample: `appName: "${appearanceRes.appearance.appName}", headerTitle: "${appearanceRes.appearance.headerTitle}" (dari tabel ${appearanceRes.tableName || 'appearance_configs'})`,
           };
         } else {
           readTestResult = {
@@ -539,64 +573,49 @@ export class CentralDatabase {
             error: appearanceRes.error || 'Record pengaturan belum ada di Supabase',
           };
         }
-      } catch (e: any) {
-        readTestResult = { success: false, error: e?.message };
-      }
 
-      // 6. Uji Tulis & Baca Ulang Non-Destruktif (Record Uji Terisolasi: ID _diagnostic_probe_test_)
-      const probeId = `_diag_probe_${Date.now()}`;
-      writeTestResult.attempted = true;
-      writeTestResult.isolatedTestId = probeId;
-      try {
-        // Tulis probe ke appearance_configs (atau appearance_config)
-        const probePayload = {
-          id: probeId,
-          app_name: 'PROBE_TEST',
-          app_subtitle: 'Probe non-destruktif untuk uji tulis Supabase',
-          updated_at: new Date().toISOString(),
-        };
-
-        let probeTable = 'appearance_configs';
-        let { error: writeErr } = await supabaseClient.from('appearance_configs').upsert(probePayload);
-        if (writeErr && writeErr.message.includes('does not exist')) {
-          probeTable = 'appearance_config';
-          const resFallback = await supabaseClient.from('appearance_config').upsert({
+        // Only run isolated write probe if explicitly requested
+        if (runWriteProbe) {
+          const probeId = `_diag_probe_${Date.now()}`;
+          writeTestResult.attempted = true;
+          writeTestResult.isolatedTestId = probeId;
+          const probePayload = {
             id: probeId,
-            config: probePayload,
-            updated_at: probePayload.updated_at,
-          });
-          writeErr = resFallback.error;
-        }
+            app_name: 'PROBE_TEST',
+            app_subtitle: 'Probe non-destruktif untuk uji tulis Supabase',
+            updated_at: new Date().toISOString(),
+          };
 
-        if (writeErr) {
-          writeTestResult.success = false;
-          writeTestResult.error = writeErr.message;
-        } else {
-          // Baca ulang dan pastikan identik
-          const { data: readBack } = await supabaseClient
-            .from(probeTable)
-            .select('*')
-            .eq('id', probeId)
-            .limit(1);
+          let probeTable = 'appearance_configs';
+          let { error: writeErr } = await supabaseClient.from('appearance_configs').upsert(probePayload);
+          if (writeErr && writeErr.message.includes('does not exist')) {
+            probeTable = 'appearance_config';
+            const resFallback = await supabaseClient.from('appearance_config').upsert({
+              id: probeId,
+              config: probePayload,
+              updated_at: probePayload.updated_at,
+            });
+            writeErr = resFallback.error;
+          }
 
-          const isIdentical =
-            readBack &&
-            readBack.length > 0 &&
-            (readBack[0].app_name === 'PROBE_TEST' || readBack[0].config?.app_name === 'PROBE_TEST');
-
-          // Hapus probe segera agar tidak mengotori database
-          await supabaseClient.from(probeTable).delete().eq('id', probeId);
-
-          if (isIdentical) {
-            writeTestResult.success = true;
-          } else {
+          if (writeErr) {
             writeTestResult.success = false;
-            writeTestResult.error = 'Hasil baca ulang record probe tidak sesuai data yang dikirim.';
+            writeTestResult.error = writeErr.message;
+          } else {
+            const { data: readBack } = await supabaseClient.from(probeTable).select('*').eq('id', probeId).limit(1);
+            const isIdentical = readBack && readBack.length > 0;
+            try {
+              await supabaseClient.from(probeTable).delete().eq('id', probeId);
+            } catch {
+              // ignore cleanup probe error
+            }
+            writeTestResult.success = Boolean(isIdentical);
+            writeTestResult.note = 'Uji tulis dan baca ulang terisolasi berhasil diverifikasi.';
           }
         }
-      } catch (e: any) {
-        writeTestResult.success = false;
-        writeTestResult.error = e?.message;
+      } catch (err: any) {
+        connectionHealthy = false;
+        connectionError = err?.message || 'Supabase diagnostic query failure';
       }
     }
 

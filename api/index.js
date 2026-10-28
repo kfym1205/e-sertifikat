@@ -988,39 +988,64 @@ async function saveAppearanceToSupabase(client, config) {
       ...config.footer || {},
       fullConfig: config
     },
+    config,
     updated_at: config.updatedAt || (/* @__PURE__ */ new Date()).toISOString()
   };
   const { error: err1 } = await client.from("appearance_configs").upsert(dbRecord);
   if (!err1) {
     return { saved: true, tableName: "appearance_configs" };
   }
-  console.warn("[BNN-DB] upsert appearance_configs:", err1.message, "- mencoba tabel appearance_config");
-  const { error: err2 } = await client.from("appearance_config").upsert({
+  const { error: err2 } = await client.from("appearance_config").upsert(dbRecord);
+  if (!err2) {
+    return { saved: true, tableName: "appearance_config" };
+  }
+  const { error: err3 } = await client.from("appearance_config").upsert({
+    id: "primary",
+    config,
+    updated_at: dbRecord.updated_at
+  });
+  if (!err3) {
+    return { saved: true, tableName: "appearance_config" };
+  }
+  const { error: err4 } = await client.from("appearance_config").upsert({
     id: "default_appearance",
     config,
     updated_at: dbRecord.updated_at
   });
-  if (!err2) {
+  if (!err4) {
     return { saved: true, tableName: "appearance_config" };
   }
-  const { error: err3 } = await client.from("appearance_config").upsert(dbRecord);
-  if (!err3) {
-    return { saved: true, tableName: "appearance_config" };
-  }
-  return { saved: false, error: err1.message || err2.message || err3.message };
+  return { saved: false, error: err1.message || err2.message || err3.message || err4.message };
 }
 async function getAppearanceFromSupabase(client) {
+  let tableFound = false;
+  let activeTableName;
   const { data: rows1, error: err1 } = await client.from("appearance_configs").select("*").limit(1);
-  if (!err1 && rows1 && rows1.length > 0) {
-    const mapped = mapAppearanceFromDb(rows1[0]);
-    if (mapped) return { appearance: mapped, tableName: "appearance_configs" };
+  if (!err1) {
+    tableFound = true;
+    activeTableName = "appearance_configs";
+    if (rows1 && rows1.length > 0) {
+      const mapped = mapAppearanceFromDb(rows1[0]);
+      if (mapped) return { appearance: mapped, tableName: "appearance_configs", tableExists: true };
+    }
   }
   const { data: rows2, error: err2 } = await client.from("appearance_config").select("*").limit(1);
-  if (!err2 && rows2 && rows2.length > 0) {
-    const mapped = mapAppearanceFromDb(rows2[0]);
-    if (mapped) return { appearance: mapped, tableName: "appearance_config" };
+  if (!err2) {
+    tableFound = true;
+    if (!activeTableName) activeTableName = "appearance_config";
+    if (rows2 && rows2.length > 0) {
+      const mapped = mapAppearanceFromDb(rows2[0]);
+      if (mapped) return { appearance: mapped, tableName: "appearance_config", tableExists: true };
+    }
   }
-  return { appearance: null, error: err1?.message || err2?.message };
+  if (tableFound) {
+    return { appearance: null, tableName: activeTableName, tableExists: true };
+  }
+  return {
+    appearance: null,
+    tableExists: false,
+    error: err1?.message || err2?.message || "Tabel appearance_configs/appearance_config belum dibuat di Supabase."
+  };
 }
 var CentralDatabase = class {
   static isUsingSupabase() {
@@ -1104,7 +1129,7 @@ var CentralDatabase = class {
           tableChecks.certificate_templates = { exists: false, error: errMsg };
         }
         if (appRes.status === "fulfilled" && !appRes.value.error) {
-          tableChecks.appearance_configs = { exists: true, recordCount: appRes.value.count ?? 0 };
+          tableChecks.appearance_configs = { exists: true, recordCount: appRes.value.count ?? 0, table: "appearance_configs (plural)" };
         } else if (connectionHealthy) {
           try {
             const fallbackApp = await timed(
@@ -1113,7 +1138,7 @@ var CentralDatabase = class {
               1500
             );
             if (!fallbackApp.error) {
-              tableChecks.appearance_configs = { exists: true, recordCount: fallbackApp.count ?? 0 };
+              tableChecks.appearance_configs = { exists: true, recordCount: fallbackApp.count ?? 0, table: "appearance_config (singular)" };
             } else {
               tableChecks.appearance_configs = { exists: false, error: fallbackApp.error.message };
             }
@@ -1132,13 +1157,21 @@ var CentralDatabase = class {
         if (connectionHealthy) {
           const appearanceRes = await timed(
             getAppearanceFromSupabase(supabaseClient),
-            { appearance: null, error: "Read timeout" },
+            { appearance: null, tableExists: false, error: "Read timeout" },
             1500
           );
           if (appearanceRes.appearance) {
             readTestResult = {
               success: true,
               dataSample: `appName: "${appearanceRes.appearance.appName}", headerTitle: "${appearanceRes.appearance.headerTitle}" (dari tabel ${appearanceRes.tableName || "appearance_configs"})`
+            };
+          } else if (appearanceRes.tableExists) {
+            const defaultApp = loadFromFile().appearance;
+            saveAppearanceToSupabase(supabaseClient, defaultApp).catch(() => {
+            });
+            readTestResult = {
+              success: true,
+              dataSample: `Tabel ${appearanceRes.tableName || "appearance_configs"} terdeteksi di Supabase (masih 0 baris, auto-seed default dipicu)`
             };
           } else {
             readTestResult = {
@@ -1237,14 +1270,29 @@ var CentralDatabase = class {
           getAppearanceFromSupabase(supabaseClient),
           supabaseClient.from("registration_counters").select("*")
         ]);
-        if (activities && activities.length > 0) {
-          fileData.activities = activities.map(mapActivityFromDb);
-        }
         if (templates && templates.length > 0) {
           fileData.templates = templates.map(mapTemplateFromDb);
+        } else if (fileData.templates && fileData.templates.length > 0) {
+          for (const t of fileData.templates) {
+            this.saveTemplate(t).catch(() => {
+            });
+          }
         }
         if (classifications && classifications.length > 0) {
           fileData.classifications = classifications.map(mapClassificationFromDb);
+        } else if (fileData.classifications && fileData.classifications.length > 0) {
+          for (const c of fileData.classifications) {
+            this.saveClassification(c).catch(() => {
+            });
+          }
+        }
+        if (activities && activities.length > 0) {
+          fileData.activities = activities.map(mapActivityFromDb);
+        } else if (fileData.activities && fileData.activities.length > 0) {
+          for (const a of fileData.activities) {
+            this.saveActivity(a).catch(() => {
+            });
+          }
         }
         if (issuances && issuances.length > 0) {
           fileData.issuances = issuances.map(mapIssuanceFromDb);
@@ -1254,6 +1302,9 @@ var CentralDatabase = class {
         }
         if (appearanceRes.appearance) {
           fileData.appearance = appearanceRes.appearance;
+        } else if (appearanceRes.tableExists) {
+          saveAppearanceToSupabase(supabaseClient, fileData.appearance).catch(() => {
+          });
         }
         if (counterRows && counterRows.length > 0) {
           const counterMap = {};
@@ -1562,30 +1613,6 @@ var CentralDatabase = class {
   static async syncPush(payload) {
     const store = loadFromFile();
     let anySupabaseSaved = false;
-    if (payload.appearance) {
-      store.appearance = mergeAppearance(store.appearance, {
-        ...payload.appearance,
-        updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-      });
-      if (supabaseClient) {
-        const res = await saveAppearanceToSupabase(supabaseClient, store.appearance);
-        if (res.saved) anySupabaseSaved = true;
-      }
-    }
-    if (Array.isArray(payload.activities) && payload.activities.length > 0) {
-      for (const act of payload.activities) {
-        const existingIdx = store.activities.findIndex((a) => a.id === act.id);
-        if (existingIdx >= 0) {
-          store.activities[existingIdx] = { ...store.activities[existingIdx], ...act };
-        } else {
-          store.activities.unshift(act);
-        }
-        if (supabaseClient) {
-          await this.saveActivity(act);
-          anySupabaseSaved = true;
-        }
-      }
-    }
     if (Array.isArray(payload.templates) && payload.templates.length > 0) {
       for (const tmpl of payload.templates) {
         const existingIdx = store.templates.findIndex((t) => t.id === tmpl.id);
@@ -1612,6 +1639,30 @@ var CentralDatabase = class {
           await this.saveClassification(cls);
           anySupabaseSaved = true;
         }
+      }
+    }
+    if (Array.isArray(payload.activities) && payload.activities.length > 0) {
+      for (const act of payload.activities) {
+        const existingIdx = store.activities.findIndex((a) => a.id === act.id);
+        if (existingIdx >= 0) {
+          store.activities[existingIdx] = { ...store.activities[existingIdx], ...act };
+        } else {
+          store.activities.unshift(act);
+        }
+        if (supabaseClient) {
+          await this.saveActivity(act);
+          anySupabaseSaved = true;
+        }
+      }
+    }
+    if (payload.appearance) {
+      store.appearance = mergeAppearance(store.appearance, {
+        ...payload.appearance,
+        updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      if (supabaseClient) {
+        const res = await saveAppearanceToSupabase(supabaseClient, store.appearance);
+        if (res.saved) anySupabaseSaved = true;
       }
     }
     if (Array.isArray(payload.issuances) && payload.issuances.length > 0) {

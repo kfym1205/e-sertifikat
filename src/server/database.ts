@@ -382,6 +382,7 @@ async function saveAppearanceToSupabase(
       ...(config.footer || {}),
       fullConfig: config,
     },
+    config,
     updated_at: config.updatedAt || new Date().toISOString(),
   };
 
@@ -391,37 +392,54 @@ async function saveAppearanceToSupabase(
     return { saved: true, tableName: 'appearance_configs' };
   }
 
-  // 2. If table appearance_configs does not exist or fails, try appearance_config (singular)
-  console.warn('[BNN-DB] upsert appearance_configs:', err1.message, '- mencoba tabel appearance_config');
-  const { error: err2 } = await client.from('appearance_config').upsert({
-    id: 'default_appearance',
-    config,
-    updated_at: dbRecord.updated_at,
-  });
+  // 2. Try appearance_config (singular) with structured record
+  const { error: err2 } = await client.from('appearance_config').upsert(dbRecord);
   if (!err2) {
     return { saved: true, tableName: 'appearance_config' };
   }
 
-  const { error: err3 } = await client.from('appearance_config').upsert(dbRecord);
+  // 3. Try appearance_config with JSON config column
+  const { error: err3 } = await client.from('appearance_config').upsert({
+    id: 'primary',
+    config,
+    updated_at: dbRecord.updated_at,
+  });
   if (!err3) {
     return { saved: true, tableName: 'appearance_config' };
   }
 
-  return { saved: false, error: err1.message || err2.message || err3.message };
+  // 4. Try legacy id 'default_appearance' with JSON config column
+  const { error: err4 } = await client.from('appearance_config').upsert({
+    id: 'default_appearance',
+    config,
+    updated_at: dbRecord.updated_at,
+  });
+  if (!err4) {
+    return { saved: true, tableName: 'appearance_config' };
+  }
+
+  return { saved: false, error: err1.message || err2.message || err3.message || err4.message };
 }
 
 async function getAppearanceFromSupabase(
   client: SupabaseClient
-): Promise<{ appearance: any | null; tableName?: string; error?: string }> {
-  // 1. Try appearance_configs (plural)
+): Promise<{ appearance: any | null; tableName?: string; tableExists?: boolean; error?: string }> {
+  let tableFound = false;
+  let activeTableName: string | undefined;
+
+  // 1. Try appearance_configs (plural, official schema)
   const { data: rows1, error: err1 } = await client
     .from('appearance_configs')
     .select('*')
     .limit(1);
 
-  if (!err1 && rows1 && rows1.length > 0) {
-    const mapped = mapAppearanceFromDb(rows1[0]);
-    if (mapped) return { appearance: mapped, tableName: 'appearance_configs' };
+  if (!err1) {
+    tableFound = true;
+    activeTableName = 'appearance_configs';
+    if (rows1 && rows1.length > 0) {
+      const mapped = mapAppearanceFromDb(rows1[0]);
+      if (mapped) return { appearance: mapped, tableName: 'appearance_configs', tableExists: true };
+    }
   }
 
   // 2. Try appearance_config (singular)
@@ -430,12 +448,26 @@ async function getAppearanceFromSupabase(
     .select('*')
     .limit(1);
 
-  if (!err2 && rows2 && rows2.length > 0) {
-    const mapped = mapAppearanceFromDb(rows2[0]);
-    if (mapped) return { appearance: mapped, tableName: 'appearance_config' };
+  if (!err2) {
+    tableFound = true;
+    if (!activeTableName) activeTableName = 'appearance_config';
+    if (rows2 && rows2.length > 0) {
+      const mapped = mapAppearanceFromDb(rows2[0]);
+      if (mapped) return { appearance: mapped, tableName: 'appearance_config', tableExists: true };
+    }
   }
 
-  return { appearance: null, error: err1?.message || err2?.message };
+  // If table was found in schema cache but currently has 0 rows:
+  if (tableFound) {
+    return { appearance: null, tableName: activeTableName, tableExists: true };
+  }
+
+  // If neither table exists in schema cache:
+  return {
+    appearance: null,
+    tableExists: false,
+    error: err1?.message || err2?.message || 'Tabel appearance_configs/appearance_config belum dibuat di Supabase.',
+  };
 }
 
 // --------------------------------------------------------------------
@@ -485,7 +517,7 @@ export class CentralDatabase {
    */
   static async checkStatus(runWriteProbe = false) {
     const baseStatus = this.getStatus();
-    const tableChecks: Record<string, { exists: boolean; recordCount?: number; error?: string }> = {};
+    const tableChecks: Record<string, { exists: boolean; recordCount?: number; error?: string; table?: string }> = {};
     let readTestResult: { success: boolean; dataSample?: string; error?: string } = { success: false };
     let writeTestResult: { attempted: boolean; success: boolean; isolatedTestId?: string; error?: string; note?: string } = {
       attempted: false,
@@ -535,7 +567,7 @@ export class CentralDatabase {
         }
 
         if (appRes.status === 'fulfilled' && !appRes.value.error) {
-          tableChecks.appearance_configs = { exists: true, recordCount: appRes.value.count ?? 0 };
+          tableChecks.appearance_configs = { exists: true, recordCount: appRes.value.count ?? 0, table: 'appearance_configs (plural)' };
         } else if (connectionHealthy) {
           // Fallback check appearance_config (singular) ONLY if connection is reachable
           try {
@@ -545,7 +577,7 @@ export class CentralDatabase {
               1500
             );
             if (!fallbackApp.error) {
-              tableChecks.appearance_configs = { exists: true, recordCount: fallbackApp.count ?? 0 };
+              tableChecks.appearance_configs = { exists: true, recordCount: fallbackApp.count ?? 0, table: 'appearance_config (singular)' };
             } else {
               tableChecks.appearance_configs = { exists: false, error: fallbackApp.error.message };
             }
@@ -565,15 +597,24 @@ export class CentralDatabase {
 
         // Test read appearance with timeout ONLY if connection is healthy
         if (connectionHealthy) {
-          const appearanceRes = await timed<{ appearance: any; tableName?: string; error?: string }>(
+          const appearanceRes = await timed<{ appearance: any; tableName?: string; tableExists?: boolean; error?: string }>(
             getAppearanceFromSupabase(supabaseClient),
-            { appearance: null, error: 'Read timeout' },
+            { appearance: null, tableExists: false, error: 'Read timeout' },
             1500
           );
           if (appearanceRes.appearance) {
             readTestResult = {
               success: true,
               dataSample: `appName: "${appearanceRes.appearance.appName}", headerTitle: "${appearanceRes.appearance.headerTitle}" (dari tabel ${appearanceRes.tableName || 'appearance_configs'})`,
+            };
+          } else if (appearanceRes.tableExists) {
+            // Table exists in Supabase schema cache but record count is 0
+            // Auto-seed initial appearance into Supabase in background so Device B can read it
+            const defaultApp = loadFromFile().appearance;
+            saveAppearanceToSupabase(supabaseClient, defaultApp).catch(() => {});
+            readTestResult = {
+              success: true,
+              dataSample: `Tabel ${appearanceRes.tableName || 'appearance_configs'} terdeteksi di Supabase (masih 0 baris, auto-seed default dipicu)`,
             };
           } else {
             readTestResult = {
@@ -694,24 +735,46 @@ export class CentralDatabase {
           supabaseClient.from('registration_counters').select('*'),
         ]);
 
-        if (activities && activities.length > 0) {
-          fileData.activities = activities.map(mapActivityFromDb);
-        }
         if (templates && templates.length > 0) {
           fileData.templates = templates.map(mapTemplateFromDb);
+        } else if (fileData.templates && fileData.templates.length > 0) {
+          // Supabase templates table is empty: seed templates in background so foreign keys won't fail
+          for (const t of fileData.templates) {
+            this.saveTemplate(t).catch(() => {});
+          }
         }
+
         if (classifications && classifications.length > 0) {
           fileData.classifications = classifications.map(mapClassificationFromDb);
+        } else if (fileData.classifications && fileData.classifications.length > 0) {
+          for (const c of fileData.classifications) {
+            this.saveClassification(c).catch(() => {});
+          }
         }
+
+        if (activities && activities.length > 0) {
+          fileData.activities = activities.map(mapActivityFromDb);
+        } else if (fileData.activities && fileData.activities.length > 0) {
+          // If activities table is empty, seed initial activities now that templates are being seeded
+          for (const a of fileData.activities) {
+            this.saveActivity(a).catch(() => {});
+          }
+        }
+
         if (issuances && issuances.length > 0) {
           fileData.issuances = issuances.map(mapIssuanceFromDb);
         }
         if (auditLogs && auditLogs.length > 0) {
           fileData.auditLogs = auditLogs;
         }
+
         if (appearanceRes.appearance) {
           fileData.appearance = appearanceRes.appearance;
+        } else if (appearanceRes.tableExists) {
+          // Supabase appearance table exists but is empty; auto-seed fileData.appearance
+          saveAppearanceToSupabase(supabaseClient, fileData.appearance).catch(() => {});
         }
+
         if (counterRows && counterRows.length > 0) {
           const counterMap: Record<string, any> = {};
           counterRows.forEach((c: any) => {
@@ -1075,32 +1138,7 @@ export class CentralDatabase {
     const store = loadFromFile();
     let anySupabaseSaved = false;
 
-    if (payload.appearance) {
-      store.appearance = mergeAppearance(store.appearance, {
-        ...payload.appearance,
-        updatedAt: new Date().toISOString(),
-      });
-      if (supabaseClient) {
-        const res = await saveAppearanceToSupabase(supabaseClient, store.appearance);
-        if (res.saved) anySupabaseSaved = true;
-      }
-    }
-
-    if (Array.isArray(payload.activities) && payload.activities.length > 0) {
-      for (const act of payload.activities) {
-        const existingIdx = store.activities.findIndex((a) => a.id === act.id);
-        if (existingIdx >= 0) {
-          store.activities[existingIdx] = { ...store.activities[existingIdx], ...act };
-        } else {
-          store.activities.unshift(act);
-        }
-        if (supabaseClient) {
-          await this.saveActivity(act);
-          anySupabaseSaved = true;
-        }
-      }
-    }
-
+    // 1. Templates first (activities reference certificate_templates.id)
     if (Array.isArray(payload.templates) && payload.templates.length > 0) {
       for (const tmpl of payload.templates) {
         const existingIdx = store.templates.findIndex((t) => t.id === tmpl.id);
@@ -1116,6 +1154,7 @@ export class CentralDatabase {
       }
     }
 
+    // 2. Classification codes
     if (Array.isArray(payload.classifications) && payload.classifications.length > 0) {
       for (const cls of payload.classifications) {
         const existingIdx = store.classifications.findIndex((c) => c.id === cls.id);
@@ -1128,6 +1167,34 @@ export class CentralDatabase {
           await this.saveClassification(cls);
           anySupabaseSaved = true;
         }
+      }
+    }
+
+    // 3. Activities (foreign keys now satisfied)
+    if (Array.isArray(payload.activities) && payload.activities.length > 0) {
+      for (const act of payload.activities) {
+        const existingIdx = store.activities.findIndex((a) => a.id === act.id);
+        if (existingIdx >= 0) {
+          store.activities[existingIdx] = { ...store.activities[existingIdx], ...act };
+        } else {
+          store.activities.unshift(act);
+        }
+        if (supabaseClient) {
+          await this.saveActivity(act);
+          anySupabaseSaved = true;
+        }
+      }
+    }
+
+    // 4. Appearance settings
+    if (payload.appearance) {
+      store.appearance = mergeAppearance(store.appearance, {
+        ...payload.appearance,
+        updatedAt: new Date().toISOString(),
+      });
+      if (supabaseClient) {
+        const res = await saveAppearanceToSupabase(supabaseClient, store.appearance);
+        if (res.saved) anySupabaseSaved = true;
       }
     }
 

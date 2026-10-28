@@ -259,6 +259,7 @@ CREATE POLICY "Admin Full Access AuditLogs" ON audit_logs
 
 -- ====================================================================
 -- 13. TABEL PENGATURAN TAMPILAN & IDENTITAS INSTANSI (e-Sertifikat BNN)
+-- Mendukung penamaan plural (appearance_configs) dan singular (appearance_config)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS appearance_configs (
   id TEXT PRIMARY KEY DEFAULT 'primary',
@@ -275,13 +276,137 @@ CREATE TABLE IF NOT EXISTS appearance_configs (
   light_blue_color TEXT DEFAULT '#EAF4FC',
   bg_color TEXT DEFAULT '#F5F8FC',
   footer_config JSONB NOT NULL DEFAULT '{}'::jsonb,
+  config JSONB,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Tabel kompatibilitas singular jika ada query yang mengakses appearance_config
+CREATE TABLE IF NOT EXISTS appearance_config (
+  id TEXT PRIMARY KEY DEFAULT 'primary',
+  app_name TEXT DEFAULT 'e-Sertifikat BNN',
+  app_subtitle TEXT DEFAULT 'Badan Narkotika Nasional Republik Indonesia',
+  logo_url TEXT,
+  logo_height_px INT DEFAULT 44,
+  header_title TEXT DEFAULT 'e-Sertifikat BNN',
+  header_style TEXT DEFAULT 'bnn_gradient',
+  theme_preset TEXT DEFAULT 'bnn_official',
+  primary_color TEXT DEFAULT '#00529B',
+  dark_blue_color TEXT DEFAULT '#003566',
+  secondary_color TEXT DEFAULT '#1677C8',
+  light_blue_color TEXT DEFAULT '#EAF4FC',
+  bg_color TEXT DEFAULT '#F5F8FC',
+  footer_config JSONB DEFAULT '{}'::jsonb,
+  config JSONB,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE appearance_configs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE appearance_config ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Public Read Appearance" ON appearance_configs
+-- Kebijakan RLS Appearance (Publik dapat membaca, backend dapat membaca & menulis)
+DROP POLICY IF EXISTS "Public Read Appearance Configs" ON appearance_configs;
+CREATE POLICY "Public Read Appearance Configs" ON appearance_configs
   FOR SELECT USING (TRUE);
 
-CREATE POLICY "Admin Full Access Appearance" ON appearance_configs
-  FOR ALL USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Allow Write Appearance Configs" ON appearance_configs;
+CREATE POLICY "Allow Write Appearance Configs" ON appearance_configs
+  FOR ALL USING (TRUE) WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS "Public Read Appearance Config" ON appearance_config;
+CREATE POLICY "Public Read Appearance Config" ON appearance_config
+  FOR SELECT USING (TRUE);
+
+DROP POLICY IF EXISTS "Allow Write Appearance Config" ON appearance_config;
+CREATE POLICY "Allow Write Appearance Config" ON appearance_config
+  FOR ALL USING (TRUE) WITH CHECK (TRUE);
+
+-- Kebijakan RLS Menyeluruh untuk Operasi Backend API (Anon & Service Role)
+DROP POLICY IF EXISTS "Allow Backend Write Activities" ON activities;
+CREATE POLICY "Allow Backend Write Activities" ON activities
+  FOR ALL USING (TRUE) WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS "Allow Backend Write Templates" ON certificate_templates;
+CREATE POLICY "Allow Backend Write Templates" ON certificate_templates
+  FOR ALL USING (TRUE) WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS "Allow Backend Write Classifications" ON classification_codes;
+CREATE POLICY "Allow Backend Write Classifications" ON classification_codes
+  FOR ALL USING (TRUE) WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS "Allow Backend Write Counters" ON registration_counters;
+CREATE POLICY "Allow Backend Write Counters" ON registration_counters
+  FOR ALL USING (TRUE) WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS "Allow Backend Write Issuances" ON certificate_issuances;
+CREATE POLICY "Allow Backend Write Issuances" ON certificate_issuances
+  FOR ALL USING (TRUE) WITH CHECK (TRUE);
+
+-- ====================================================================
+-- 14. SEED DATA INISIAL (IDEMPOTEN - TIDAK MENIMPA DATA LAMA)
+-- ====================================================================
+
+-- Seed Template Sertifikat Default
+INSERT INTO certificate_templates (id, name, orientation, bg_image_url, width_mm, height_mm, version, is_default, created_at, updated_at)
+VALUES 
+  ('tmpl_bnn_official_01', 'Template Resmi BNN RI (Standar Garuda)', 'landscape', 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1122" height="794"><rect width="100%" height="100%" fill="%23f8fafc"/></svg>', 297, 210, 1, TRUE, NOW(), NOW()),
+  ('tmpl_bnn_gold_02', 'Template Gold Edition BNNK Gorontalo', 'landscape', 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1122" height="794"><rect width="100%" height="100%" fill="%23fffbeb"/></svg>', 297, 210, 1, FALSE, NOW(), NOW()),
+  ('tmpl_workshop_modern_03', 'Template Modern Seminar / Pelatihan', 'landscape', 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1122" height="794"><rect width="100%" height="100%" fill="%23f0f9ff"/></svg>', 297, 210, 1, FALSE, NOW(), NOW()),
+  ('tmpl_portrait_official_04', 'Template Portrait Apresiasi Satker', 'portrait', 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="794" height="1122"><rect width="100%" height="100%" fill="%23f8fafc"/></svg>', 210, 297, 1, FALSE, NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed Kode Klasifikasi Standar BNN
+INSERT INTO classification_codes (id, code, name, description, is_active, created_at, updated_at)
+VALUES
+  ('cls_p2m_01', 'KA.00.01', 'Pencegahan dan Pemberdayaan Masyarakat (P2M)', 'Kegiatan sosialisasi, penyuluhan, bimtek, dan pemberdayaan relawan anti narkoba', TRUE, NOW(), NOW()),
+  ('cls_rehab_02', 'RH.01.02', 'Rehabilitasi dan Pascarehabilitasi', 'Layanan rehabilitasi medis, sosial, dan pelatihan vokasional', TRUE, NOW(), NOW()),
+  ('cls_umum_03', 'UM.02.01', 'Umum dan Kerjasama Antar Lembaga', 'Kegiatan seremonial, seminar nasional, dan apresiasi mitra kerja', TRUE, NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed Pengaturan Tampilan Awal (Hanya jika belum ada record)
+INSERT INTO appearance_configs (
+  id, app_name, app_subtitle, header_title, header_style, theme_preset,
+  primary_color, dark_blue_color, secondary_color, light_blue_color, bg_color,
+  footer_config, updated_at
+)
+VALUES (
+  'primary',
+  'e-Sertifikat BNN',
+  'Badan Narkotika Nasional Republik Indonesia',
+  'e-Sertifikat BNN',
+  'navy_gradient',
+  'bnn_official',
+  '#00529B',
+  '#003566',
+  '#1677C8',
+  '#EAF4FC',
+  '#F5F8FC',
+  '{"address":"Jl. BNN No. 1, Gorontalo","email":"sertifikat.bnnkgorontalo@gmail.com","phone":"+62 811-4350-999","website":"https://bnn.go.id"}'::jsonb,
+  NOW()
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO appearance_config (
+  id, app_name, app_subtitle, header_title, header_style, theme_preset,
+  primary_color, dark_blue_color, secondary_color, light_blue_color, bg_color,
+  footer_config, updated_at
+)
+VALUES (
+  'primary',
+  'e-Sertifikat BNN',
+  'Badan Narkotika Nasional Republik Indonesia',
+  'e-Sertifikat BNN',
+  'navy_gradient',
+  'bnn_official',
+  '#00529B',
+  '#003566',
+  '#1677C8',
+  '#EAF4FC',
+  '#F5F8FC',
+  '{"address":"Jl. BNN No. 1, Gorontalo","email":"sertifikat.bnnkgorontalo@gmail.com","phone":"+62 811-4350-999","website":"https://bnn.go.id"}'::jsonb,
+  NOW()
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Notifikasi PostgREST untuk segera merefresh schema cache
+NOTIFY pgrst, 'reload schema';
+

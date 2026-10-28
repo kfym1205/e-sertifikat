@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import app from '../src/serverApp';
+import app from './serverApp';
 
 export const maxDuration = 30;
 
@@ -42,4 +42,3 @@ export default function handler(req: Request, res: Response): Promise<void> {
     }
   });
 }
-

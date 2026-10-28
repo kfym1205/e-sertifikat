@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "tsx server.ts",
     "start": "tsx server.ts",
-    "build": "vite build",
+    "build": "vite build && npm run build:server",
+    "build:server": "esbuild src/serverless.ts --bundle --platform=node --target=node20 --format=esm --packages=external --outfile=api/index.js",
     "preview": "vite preview",
-    "clean": "rm -rf dist server.js",
+    "clean": "rm -rf dist server.js api/index.js",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
